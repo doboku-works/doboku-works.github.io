@@ -66,7 +66,7 @@
           <div class="hero-pill">⚡ 全作品 ブラウザで直接グルグル操作可能（インストール不要・WebGL）</div>
           <h1>現場の土木基準を、<br><span class="grad-text">動く 3D / 4D と力学</span>で可視化する。</h1>
           <p class="hero-lead">
-            砂防堰堤の打設割・段階水替え、合理化少数鈑桁橋の合成床版一体送り出し＆FEM弾性たわみ、都市地下34mの5層インフラ解剖ジオラマまで。
+            河川堤防の4大決壊メカニズム（2D浸透流・円弧すべり・パイピング噴砂・洗掘）、都市地下34mの5層インフラ解剖ジオラマ、合理化少数鈑桁橋の合成床版一体送り出し＆FEM弾性たわみ、砂防堰堤の打設割・段階水替えまで。
             「本物の現場ディテール」と「コード駆動のインタラクティブWeb 3D」を掛け合わせた土木可視化＆インフラアートを、<strong>minamo（土木×IT）</strong>の個人技術検証として公開しています。
           </p>
           <div class="hero-actions">
@@ -77,12 +77,12 @@
           </div>
         <div class="hero-stats">
           <div class="stat">
-            <span class="stat-val">3 Demos</span>
+            <span class="stat-val">4 Demos</span>
             <span class="stat-label">WebGL 実機体験可能</span>
           </div>
           <div class="stat">
             <span class="stat-val">FEM + 4D</span>
-            <span class="stat-label">力学・工程リアルタイム連動</span>
+            <span class="stat-label">浸透流・力学・工程連動</span>
           </div>
           <div class="stat">
             <span class="stat-val">ブラウザ完結</span>
@@ -102,7 +102,8 @@
             <h2>ブラウザで触れる 3D / 4D 技術デモ・作品</h2>
           </div>
           <div class="filter-tabs" id="filter-tabs">
-            <button class="ftab active" data-filter="all">すべて (3)</button>
+            <button class="ftab active" data-filter="all">すべて (4)</button>
+            <button class="ftab" data-filter="river">河川・防災</button>
             <button class="ftab" data-filter="art">土木アート</button>
             <button class="ftab" data-filter="bridge">橋梁・力学FEM</button>
             <button class="ftab" data-filter="sabo">砂防・施工計画</button>
@@ -110,11 +111,36 @@
         </div>
 
         <div class="works-grid">
+          <!-- Work 0 (NEW): River Levee Failure Lab -->
+          <article class="work-card" data-cat="river">
+            <a href="./works/river-levee/viewer/index.html" class="card-thumb-link">
+              <img src="./assets/thumbs/river_levee.jpg" alt="RIVER LEVEE LAB 河川堤防 4大決壊メカニズム ＆ 対策工 3D/4D シミュレーション" loading="lazy" />
+              <span class="thumb-badge river">NEW / 2D浸透流 ＆ 防災4D</span>
+              <span class="thumb-play">▶ 3Dビューアを起動</span>
+            </a>
+            <div class="card-body">
+              <div class="tags">
+                <span>4大決壊モード</span><span>対策工ON/OFF比較</span><span>2D浸透流解析</span><span>円弧すべり・噴砂</span>
+              </div>
+              <h3>RIVER LEVEE LAB — 河川堤防 4大決壊メカニズム ＆ 対策工</h3>
+              <p>
+                国交省「河川堤防の構造検討の手引き」準拠の2D浸透流・円弧すべり・局所動水勾配解析を3Dカットアウェイ断面へ完全連動。「①越水（裏法尻洗掘）」「②浸透すべり」「③基礎地盤パイピング（噴砂）」「④河床洗掘」の4大要因と、粘り強い堤防・砕石ドレーン・遮水鋼矢板・異形根固めブロックの効果をワンクリック比較。
+              </p>
+              <ul class="feat-list">
+                <li>「対策工 ON / OFF」切替で鋼矢板左右の水圧急落（i=0.80→0.20）やドレーンによる安全率回復（Fs=0.85→1.79）を実体験</li>
+                <li>浸潤面・流線矢印・噴砂ボイリング・すべり崩壊・住宅地氾濫までリアルタイム描画</li>
+              </ul>
+              <div class="card-actions">
+                <a href="./works/river-levee/viewer/index.html" class="btn btn-primary btn-sm">🚀 ブラウザで3Dを操作する</a>
+              </div>
+            </div>
+          </article>
+
           <!-- Work 1: Urban Cutaway Cube -->
           <article class="work-card" data-cat="art">
             <a href="./works/urban-cube/viewer/index.html" class="card-thumb-link">
               <img src="./assets/thumbs/urban_cube.jpg" alt="TOKYO UNDERGROUND 都市地下解剖キューブ・ジオラマ" loading="lazy" />
-              <span class="thumb-badge art">NEW / 土木デジタルアート</span>
+              <span class="thumb-badge art">土木デジタルアート</span>
               <span class="thumb-play">▶ 3Dビューアを起動</span>
             </a>
             <div class="card-body">

@@ -9,9 +9,10 @@
 
 ## 収録デモ（すべてブラウザで直接 3D 操作可能）
 
-1. **TOKYO UNDERGROUND — 都市地下解剖キューブ・ジオラマ** (`works/urban-cube/viewer/`)
-2. **新青葉川橋 — 少数鈑桁橋（合理化2主桁・合成床版）送り出し架設 4D ＆ FEM** (`works/bridge-launching/viewer/`)
-3. **大沢川砂防堰堤 — 基準準拠 施工計画・段階水替え・打設割 3D/4D** (`works/sabo-dam/viewer/`)
+1. **RIVER LEVEE LAB — 河川堤防 4大決壊メカニズム ＆ 対策工 3D/4D シミュレーション** (`works/river-levee/viewer/`)
+2. **TOKYO UNDERGROUND — 都市地下解剖キューブ・ジオラマ** (`works/urban-cube/viewer/`)
+3. **新青葉川橋 — 少数鈑桁橋（合理化2主桁・合成床版）送り出し架設 4D ＆ FEM** (`works/bridge-launching/viewer/`)
+4. **大沢川砂防堰堤 — 基準準拠 施工計画・段階水替え・打設割 3D/4D** (`works/sabo-dam/viewer/`)
 
 ## ローカル確認
 

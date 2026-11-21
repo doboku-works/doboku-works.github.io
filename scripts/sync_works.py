@@ -23,6 +23,13 @@ THREE_FILES = [
 
 WORKS = [
     {
+        "slug": "river-levee",
+        "src_dir": PROJECTS_ROOT / "river-levee-failure-3d",
+        "output_files": ["river_levee_viewer.glb", "viewer_data.json"],
+        "thumb_src": PROJECTS_ROOT / "river-levee-failure-3d" / "output" / "previews" / "thumb_piping_off.png",
+        "thumb_out": "river_levee.jpg",
+    },
+    {
         "slug": "urban-cube",
         "src_dir": PROJECTS_ROOT / "urban-cutaway-cube-3d",
         "output_files": ["urban_cutaway_cube.glb", "viewer_data.json"],
@@ -84,6 +91,7 @@ def sync_works() -> None:
             if vf.name == "index.html":
                 html = vf.read_text(encoding="utf-8")
                 html = html.replace("../node_modules/three/", "../../../libs/three/")
+                html = html.replace("../libs/three/", "../../../libs/three/")
                 html = re.sub(
                     r'<link\s+rel="icon"[^\n]*',
                     '<link rel="icon" type="image/png" href="../../../assets/brand/favicon.png" />',
@@ -92,7 +100,7 @@ def sync_works() -> None:
                 )
                 if 'href="../../../index.html"' not in html:
                     html = re.sub(
-                        r'(<div\s+class="brand"\s*>)',
+                        r'(<div\s+class="brand(?:-area)?"\s*>)',
                         rf"\1\n        {BACK_BTN_HTML}",
                         html,
                         count=1,
