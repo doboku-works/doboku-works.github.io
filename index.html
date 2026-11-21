@@ -14,14 +14,15 @@
   <meta name="twitter:title" content="DOBOKU WORKS — 土木 3D/4D ＆ インフラ可視化 技術デモ" />
   <meta name="twitter:description" content="現場の土木基準と構造力学FEMをブラウザで直接操作できる3D/4D技術デモ＆インフラアート集。" />
   <meta name="twitter:image" content="https://doboku-works.github.io/assets/thumbs/urban_cube.jpg" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23081020'/><path d='M16 4l11 6v12l-11 6-11-6V10z' fill='none' stroke='%2338bdf8' stroke-width='2.2'/><path d='M6 17h20M11 17v7M21 17v7' stroke='%23f97316' stroke-width='2'/></svg>" />
+  <link rel="icon" type="image/png" href="./assets/brand/favicon.png" />
+  <link rel="apple-touch-icon" href="./assets/brand/avatar.jpg" />
   <link rel="stylesheet" href="./assets/style.css" />
 </head>
 <body>
   <header class="site-header">
     <div class="container header-inner">
       <a href="#top" class="brand">
-        <span class="brand-mark">DW</span>
+        <img src="./assets/brand/avatar.jpg" alt="DOBOKU WORKS アイコン" class="brand-avatar" width="38" height="38" />
         <div>
           <span class="brand-name">DOBOKU WORKS</span>
           <span class="brand-sub">Civil Engineering 3D / 4D &amp; FEM Visualization</span>
@@ -40,9 +41,25 @@
     <!-- Hero -->
     <section class="hero">
       <div class="hero-grid-bg" aria-hidden="true"></div>
-      <div class="container hero-inner">
-        <div class="hero-pill">⚡ 全作品 ブラウザで直接グルグル操作可能（インストール不要・WebGL）</div>
-        <h1>現場の土木基準を、<br><span class="grad-text">動く 3D / 4D と力学</span>で可視化する。</h1>
+      <div class="container">
+        <div class="hero-banner-card">
+          <picture>
+            <source srcset="./assets/brand/banner.webp" type="image/webp" />
+            <img src="./assets/brand/banner.jpg" alt="DOBOKU WORKS ヘッダーバナー（川と橋・オリジナルキャラクター）" class="hero-banner-img" width="1024" height="341" />
+          </picture>
+          <div class="hero-banner-fade" aria-hidden="true"></div>
+          <div class="hero-banner-profile">
+            <img src="./assets/brand/avatar.jpg" alt="DOBOKU WORKS プロフィールアイコン" class="hero-profile-avatar" width="68" height="68" />
+            <div class="hero-profile-meta">
+              <span class="hero-profile-name">DOBOKU WORKS</span>
+              <span class="hero-profile-tag">土木 3D / 4D ＆ 構造力学 技術デモアーカイブ</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-inner">
+          <div class="hero-pill">⚡ 全作品 ブラウザで直接グルグル操作可能（インストール不要・WebGL）</div>
+          <h1>現場の土木基準を、<br><span class="grad-text">動く 3D / 4D と力学</span>で可視化する。</h1>
         <p class="hero-lead">
           砂防堰堤の打設割・段階水替え、合理化少数鈑桁橋の合成床版一体送り出し＆FEM弾性たわみ、都市地下34mの5層インフラ解剖ジオラマまで。
           「本物の現場ディテール」と「コード駆動のインタラクティブWeb 3D」を掛け合わせた土木可視化＆インフラアートを、個人の技術検証として制作・公開しています。
@@ -64,6 +81,7 @@
             <span class="stat-val">ブラウザ完結</span>
             <span class="stat-label">専用CAD不要でPC/スマホ閲覧</span>
           </div>
+        </div>
         </div>
       </div>
     </section>
@@ -213,15 +231,18 @@
     <!-- About & Safety Notice -->
     <section id="about" class="section section-alt">
       <div class="container contact-box">
-        <div>
-          <span class="eyebrow">ABOUT &amp; POLICY</span>
-          <h2>このサイトについて・免責事項</h2>
-          <p class="contact-desc">
-            本サイトは、土木工学・施工計画・構造力学と WebGL（Three.js）を掛け合わせた個人の技術検証およびデジタルアート作品の公開アーカイブです。
-          </p>
-          <p class="safety-note">
-            ※本サイトに掲載しているすべての3Dモデル・地形・構造物諸元・力学データは、個人の学習・技術検証および公開デモのために独自設計した<strong>完全架空のオリジナルモデル</strong>であり、特定の実在工事・企業・発注者の機密情報は一切含んでいません。また、本サイトは非営利の個人技術デモサイトです。
-          </p>
+        <div class="about-main">
+          <img src="./assets/brand/avatar.jpg" alt="DOBOKU WORKS アイコン" class="about-avatar" width="76" height="76" />
+          <div>
+            <span class="eyebrow">ABOUT &amp; POLICY</span>
+            <h2>このサイトについて・免責事項</h2>
+            <p class="contact-desc">
+              本サイトは、土木工学・施工計画・構造力学と WebGL（Three.js）を掛け合わせた個人の技術検証およびデジタルアート作品の公開アーカイブです。
+            </p>
+            <p class="safety-note">
+              ※本サイトに掲載しているすべての3Dモデル・地形・構造物諸元・力学データは、個人の学習・技術検証および公開デモのために独自設計した<strong>完全架空のオリジナルモデル</strong>であり、特定の実在工事・企業・発注者の機密情報は一切含んでいません。また、本サイトは非営利の個人技術デモサイトです。
+            </p>
+          </div>
         </div>
         <div class="contact-actions">
           <a href="https://github.com/doboku-works" target="_blank" rel="noopener noreferrer" class="btn btn-primary">GitHub (doboku-works) を見る ↗</a>
