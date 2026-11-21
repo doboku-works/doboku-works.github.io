@@ -22,13 +22,14 @@ THREE_FILES = [
 ]
 
 WORKS = [
-    {
-        "slug": "river-levee",
-        "src_dir": PROJECTS_ROOT / "river-levee-failure-3d",
-        "output_files": ["river_levee_viewer.glb", "viewer_data.json"],
-        "thumb_src": PROJECTS_ROOT / "river-levee-failure-3d" / "output" / "previews" / "thumb_piping_off.png",
-        "thumb_out": "river_levee.jpg",
-    },
+    # 公開前ローカル技術検証中のため一時保留（検証完了後にコメント解除して同期可能）
+    # {
+    #     "slug": "river-levee",
+    #     "src_dir": PROJECTS_ROOT / "river-levee-failure-3d",
+    #     "output_files": ["river_levee_viewer.glb", "viewer_data.json"],
+    #     "thumb_src": PROJECTS_ROOT / "river-levee-failure-3d" / "output" / "previews" / "thumb_piping_off.png",
+    #     "thumb_out": "river_levee.jpg",
+    # },
     {
         "slug": "urban-cube",
         "src_dir": PROJECTS_ROOT / "urban-cutaway-cube-3d",

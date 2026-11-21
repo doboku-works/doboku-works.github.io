@@ -16,7 +16,7 @@
   <meta name="twitter:site" content="@doboku_works" />
   <meta name="twitter:creator" content="@doboku_works" />
   <meta name="twitter:title" content="DOBOKU WORKS by minamo｜土木×IT — 土木 3D/4D 技術デモ" />
-  <meta name="twitter:description" content="現場の土木基準と構造力学FEMをブラウザで直接操作できる3D/4D技術デモ＆インフラアート集。" />
+  <meta name="twitter:description" content="土木の構造・施工手順と簡易力学計算をブラウザで直接操作できる3D/4D技術デモ＆インフラアート集。" />
   <meta name="twitter:image" content="https://doboku-works.github.io/assets/brand/ogp.jpg" />
   <link rel="icon" type="image/png" href="./assets/brand/favicon.png" />
   <link rel="apple-touch-icon" href="./assets/brand/avatar.jpg" />
@@ -64,10 +64,10 @@
 
         <div class="hero-inner">
           <div class="hero-pill">⚡ 全作品 ブラウザで直接グルグル操作可能（インストール不要・WebGL）</div>
-          <h1>現場の土木基準を、<br><span class="grad-text">動く 3D / 4D と力学</span>で可視化する。</h1>
+          <h1>土木の構造と施工を、<br><span class="grad-text">動く 3D / 4D と力学</span>で可視化する。</h1>
           <p class="hero-lead">
-            河川堤防の4大決壊メカニズム（2D浸透流・円弧すべり・パイピング噴砂・洗掘）、都市地下34mの5層インフラ解剖ジオラマ、合理化少数鈑桁橋の合成床版一体送り出し＆FEM弾性たわみ、砂防堰堤の打設割・段階水替えまで。
-            「本物の現場ディテール」と「コード駆動のインタラクティブWeb 3D」を掛け合わせた土木可視化＆インフラアートを、<strong>minamo（土木×IT）</strong>の個人技術検証として公開しています。
+            都市地下34mの5層インフラ解剖ジオラマ、合理化少数鈑桁橋の合成床版一体送り出し＆1D連続梁FEMたわみ、砂防堰堤の打設割・段階水替えまで。
+            「現場の施工・構造イメージ」と「コード駆動のインタラクティブWeb 3D」を掛け合わせた可視化デモ＆インフラアートを、<strong>minamo（土木×IT）</strong>の個人技術検証として公開しています。
           </p>
           <div class="hero-actions">
             <a href="#works" class="btn btn-primary">🚀 インタラクティブ 3D デモを触る</a>
@@ -77,12 +77,12 @@
           </div>
         <div class="hero-stats">
           <div class="stat">
-            <span class="stat-val">4 Demos</span>
+            <span class="stat-val">3 Demos</span>
             <span class="stat-label">WebGL 実機体験可能</span>
           </div>
           <div class="stat">
             <span class="stat-val">FEM + 4D</span>
-            <span class="stat-label">浸透流・力学・工程連動</span>
+            <span class="stat-label">力学・工程リアルタイム連動</span>
           </div>
           <div class="stat">
             <span class="stat-val">ブラウザ完結</span>
@@ -102,8 +102,7 @@
             <h2>ブラウザで触れる 3D / 4D 技術デモ・作品</h2>
           </div>
           <div class="filter-tabs" id="filter-tabs">
-            <button class="ftab active" data-filter="all">すべて (4)</button>
-            <button class="ftab" data-filter="river">河川・防災</button>
+            <button class="ftab active" data-filter="all">すべて (3)</button>
             <button class="ftab" data-filter="art">土木アート</button>
             <button class="ftab" data-filter="bridge">橋梁・力学FEM</button>
             <button class="ftab" data-filter="sabo">砂防・施工計画</button>
@@ -111,31 +110,6 @@
         </div>
 
         <div class="works-grid">
-          <!-- Work 0 (NEW): River Levee Failure Lab -->
-          <article class="work-card" data-cat="river">
-            <a href="./works/river-levee/viewer/index.html" class="card-thumb-link">
-              <img src="./assets/thumbs/river_levee.jpg" alt="RIVER LEVEE LAB 河川堤防 4大決壊メカニズム ＆ 対策工 3D/4D シミュレーション" loading="lazy" />
-              <span class="thumb-badge river">NEW / 2D浸透流 ＆ 防災4D</span>
-              <span class="thumb-play">▶ 3Dビューアを起動</span>
-            </a>
-            <div class="card-body">
-              <div class="tags">
-                <span>4大決壊モード</span><span>対策工ON/OFF比較</span><span>2D浸透流解析</span><span>円弧すべり・噴砂</span>
-              </div>
-              <h3>RIVER LEVEE LAB — 河川堤防 4大決壊メカニズム ＆ 対策工</h3>
-              <p>
-                国交省「河川堤防の構造検討の手引き」準拠の2D浸透流・円弧すべり・局所動水勾配解析を3Dカットアウェイ断面へ完全連動。「①越水（裏法尻洗掘）」「②浸透すべり」「③基礎地盤パイピング（噴砂）」「④河床洗掘」の4大要因と、粘り強い堤防・砕石ドレーン・遮水鋼矢板・異形根固めブロックの効果をワンクリック比較。
-              </p>
-              <ul class="feat-list">
-                <li>「対策工 ON / OFF」切替で鋼矢板左右の水圧急落（i=0.80→0.20）やドレーンによる安全率回復（Fs=0.85→1.79）を実体験</li>
-                <li>浸潤面・流線矢印・噴砂ボイリング・すべり崩壊・住宅地氾濫までリアルタイム描画</li>
-              </ul>
-              <div class="card-actions">
-                <a href="./works/river-levee/viewer/index.html" class="btn btn-primary btn-sm">🚀 ブラウザで3Dを操作する</a>
-              </div>
-            </div>
-          </article>
-
           <!-- Work 1: Urban Cutaway Cube -->
           <article class="work-card" data-cat="art">
             <a href="./works/urban-cube/viewer/index.html" class="card-thumb-link">
@@ -189,17 +163,17 @@
           <!-- Work 3: Sabo Dam -->
           <article class="work-card" data-cat="sabo">
             <a href="./works/sabo-dam/viewer/index.html" class="card-thumb-link">
-              <img src="./assets/thumbs/sabo_dam.jpg" alt="大沢川砂防堰堤 施工計画・段階水替え・打設割 3D BIM/CIM" loading="lazy" />
-              <span class="thumb-badge sabo">砂防技術基準準拠 4D</span>
+              <img src="./assets/thumbs/sabo_dam.jpg" alt="大沢川砂防堰堤 施工計画・段階水替え・打設割 3D 概念モデル" loading="lazy" />
+              <span class="thumb-badge sabo">施工計画・段階水替え 4D</span>
               <span class="thumb-play">▶ 3Dビューアを起動</span>
             </a>
             <div class="card-body">
               <div class="tags">
                 <span>打設割・鉛直目地</span><span>段階水替え切替</span><span>水叩き後施工</span><span>距離計測</span>
               </div>
-              <h3>大沢川砂防堰堤 — 基準準拠 施工計画・段階水替え 4D</h3>
+              <h3>大沢川砂防堰堤 — 施工計画・段階水替え 4D</h3>
               <p>
-                不透過型重力式コンクリート砂防堰堤の施工計画3Dモデル。鉛直打設目地・日打設量上限・安衛則キャットウォークを盛り込み、床掘り水替えから「現況河床まで立ち上げて水通し確保→水替え不要化→水叩き後施工」の現実手順を再現。
+                砂防堰堤の標準的な施工手順を参考に構成した不透過型重力式コンクリート堰堤の概念モデル。鉛直打設目地・日打設量上限・キャットウォークを盛り込み、床掘り水替えから「現況河床まで立ち上げて水通し確保→水替え不要化→水叩き後施工」の工程を可視化。
               </p>
               <ul class="feat-list">
                 <li>主堤14ブロック＋リフト別の日別コンクリート打設スケジュール・数量表を連動表示</li>
@@ -226,13 +200,13 @@
         <div class="cap-grid">
           <div class="cap-card">
             <div class="cap-icon">🏗️</div>
-            <h3>施工基準・仮設手順の 4D 可視化</h3>
-            <p>図面や文章だけではイメージしにくい仮設切替・重機干渉・送り出し手順を、技術基準に基づきブラウザ上で自在に動かせる 4D モデルとして再現・検証しています。</p>
+            <h3>施工手順・仮設切替の 4D 可視化</h3>
+            <p>図面や文章だけではイメージしにくい仮設切替・重機配置・送り出し手順を、一般的な施工計画の考え方を参考にブラウザ上で動かせる 4D モデルとして表現しています。</p>
           </div>
           <div class="cap-card">
             <div class="cap-icon">📐</div>
-            <h3>構造力学 FEM・数量計算とのリアルタイム連動</h3>
-            <p>Python で算出した弾性たわみ・曲げモーメント・支点反力・打設数量を 3D の変形や HUD モニターと同期させ、直感的に仕組みがわかる工学可視化を探求しています。</p>
+            <h3>簡易力学計算・数量算出とのリアルタイム連動</h3>
+            <p>Python で算出した 1D 連続梁 FEM たわみ・曲げモーメント・支点反力・打設数量を 3D 変形や HUD モニターと同期させ、直感的に仕組みがわかる工学可視化を探求しています。</p>
           </div>
           <div class="cap-card">
             <div class="cap-icon">🎨</div>
@@ -273,7 +247,7 @@
               <strong>minamo｜土木×IT</strong> が運営する「DOBOKU WORKS」の個人技術検証アーカイブです。土木工学・施工計画・構造力学と WebGL（Three.js）・Python を掛け合わせた 3D/4D シミュレーションやインフラアートを制作し、最新の開発動画は <strong>X（@doboku_works）</strong>、制作の工夫や技術解説は <strong>note</strong> で発信しています。
             </p>
             <p class="safety-note">
-              ※本サイトに掲載しているすべての3Dモデル・地形・構造物諸元・力学データは、個人の学習・技術検証および公開デモのために独自設計した<strong>完全架空のオリジナルモデル</strong>であり、特定の実在工事・企業・発注者の機密情報は一切含んでいません。また、本サイトは非営利の個人技術デモサイトです。
+              ※本サイトに掲載しているすべての3Dモデル・地形・構造物諸元・力学データは、個人の学習・技術検証およびメカニズム理解のために独自設計した<strong>完全架空のオリジナルモデル（簡易シミュレーション）</strong>であり、実務設計や防災・ハザード評価を目的としたものではありません。また、特定の実在工事・企業・発注者の機密情報は一切含まない非営利の個人デモサイトです。
             </p>
           </div>
         </div>
