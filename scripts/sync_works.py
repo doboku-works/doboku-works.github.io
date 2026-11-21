@@ -84,6 +84,12 @@ def sync_works() -> None:
             if vf.name == "index.html":
                 html = vf.read_text(encoding="utf-8")
                 html = html.replace("../node_modules/three/", "../../../libs/three/")
+                html = re.sub(
+                    r'<link\s+rel="icon"[^\n]*',
+                    '<link rel="icon" type="image/png" href="../../../assets/brand/favicon.png" />',
+                    html,
+                    count=1,
+                )
                 if 'href="../../../index.html"' not in html:
                     html = re.sub(
                         r'(<div\s+class="brand"\s*>)',
