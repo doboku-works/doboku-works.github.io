@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>大沢川砂防堰堤 施工計画 3D BIM/CIM ビューア</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230b1320'/><path d='M4 24L9 10h5l2 5 2-5h5l5 14H4z' fill='%2338bdf8'/></svg>" />
+  <link rel="stylesheet" href="./style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../../libs/three/build/three.module.js",
+        "three/addons/": "../../../libs/three/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <!-- トップバー -->
+    <header class="topbar">
+      <div class="brand">
+        <a href="../../../index.html" style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:6px;background:rgba(56,189,248,0.16);border:1px solid rgba(56,189,248,0.48);color:#e0f2fe;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;" title="ポートフォリオ一覧へ戻る">← 一覧へ</a>
+        <span class="badge">BIM/CIM 試作</span>
+        <div class="titles">
+          <h1 id="project-title">大沢川砂防堰堤 施工計画 3Dモデル</h1>
+          <p id="project-subtitle">不透過型重力式コンクリート砂防堰堤（主堤・副堤・垂直壁・左岸堤）</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="camera-presets" id="camera-presets">
+          <button data-cam="iso_left" class="active" title="下流左岸側からの標準鳥瞰">鳥瞰(左岸)</button>
+          <button data-cam="iso_right" title="下流右岸側からの鳥瞰">鳥瞰(右岸)</button>
+          <button data-cam="front" title="下流より上流を望む土木標準正面図">下流正面</button>
+          <button data-cam="upstream" title="上流側からの左岸堤・湛水確認">上流鳥瞰</button>
+          <button data-cam="section_long" title="縦断方向側面">縦断側面</button>
+          <button data-cam="plan" title="真上からの平面図">平面図</button>
+          <button data-cam="levee_wall" title="左岸垂直壁と左岸堤の取り合い近接">左岸堤・壁</button>
+          <button data-cam="yard" title="施工ヤードとクレーン視点">施工ヤード</button>
+        </div>
+        <button id="btn-measure" class="tool-btn" title="2点間の距離・標高差・勾配を計測">📏 計測</button>
+        <button id="btn-wireframe" class="tool-btn" title="ワイヤーフレーム表示切替">▦ 網目</button>
+        <button id="btn-screenshot" class="tool-btn primary" title="施工計画書用のPNG画像を書き出し">📷 PNG保存</button>
+      </div>
+    </header>
+
+    <!-- 3Dキャンバス -->
+    <main id="viewport-wrap">
+      <div id="canvas-container"></div>
+      <div id="labels-layer"></div>
+
+      <!-- ロード中オーバーレイ -->
+      <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div id="loading-text">3Dモデルと地形データを読み込み中...</div>
+      </div>
+
+      <!-- 方位・座標インジケータ -->
+      <div class="hud-compass">
+        <div class="compass-row"><span class="tag-bank left">左岸 (+X)</span><span class="tag-bank right">右岸 (-X)</span></div>
+        <div class="compass-row"><span class="tag-flow">上流 (-Z) ➔ 下流 (+Z)</span></div>
+        <div id="cursor-coords" class="coords-readout">カーソル位置: --</div>
+      </div>
+
+      <!-- 計測モード結果HUD -->
+      <div id="measure-hud" class="hud-card hidden">
+        <div class="hud-header">
+          <span>📏 2点間 3D計測</span>
+          <button id="btn-measure-clear" class="mini-btn">クリア</button>
+        </div>
+        <div id="measure-body" class="hud-body">モデル上の2点をクリックしてください。</div>
+      </div>
+
+      <!-- クリック選択・構造物インスペクタ -->
+      <div id="inspector-hud" class="hud-card hidden">
+        <div class="hud-header">
+          <span id="insp-title">構造物諸元</span>
+          <button id="btn-insp-close" class="mini-btn">✕</button>
+        </div>
+        <div id="insp-body" class="hud-body"></div>
+      </div>
+
+      <!-- 左コントロールパネル -->
+      <aside class="side-panel left-panel" id="left-panel">
+        <div class="panel-tabs">
+          <button class="tab-btn active" data-tab="layers">レイヤー</button>
+          <button class="tab-btn" data-tab="pouring">打設割・基準</button>
+          <button class="tab-btn" data-tab="clipping">断面カット</button>
+          <button class="tab-btn" data-tab="quantities">数量表</button>
+        </div>
+
+        <!-- タブ1: レイヤー＆表示設定 -->
+        <div class="tab-content active" id="tab-layers">
+          <section class="group">
+            <h3>主要構造物（工種別）</h3>
+            <label class="chk"><input type="checkbox" data-layer="main_dam" checked /><span class="swatch" style="background:#b7bbb7"></span>主堤（4ブロック×7リフト）</label>
+            <label class="chk"><input type="checkbox" data-layer="joints_ws" checked /><span class="swatch" style="background:#2298d6"></span>鉛直目地・塩ビ止水板（幅240mm）</label>
+            <label class="chk"><input type="checkbox" data-layer="sub_dam" checked /><span class="swatch" style="background:#a7aba7"></span>副堤（3ブロック×3リフト）</label>
+            <label class="chk"><input type="checkbox" data-layer="apron" checked /><span class="swatch" style="background:#9ea29d"></span>主水叩き・下流保護水叩き</label>
+            <label class="chk"><input type="checkbox" data-layer="cutoff_vwall" checked /><span class="swatch" style="background:#929692"></span>垂直壁（先端洗掘防止壁）</label>
+            <label class="chk"><input type="checkbox" data-layer="swall_left" checked /><span class="swatch" style="background:#b3b7b2"></span>左岸側壁（土側垂直・内1:0.45）</label>
+            <label class="chk"><input type="checkbox" data-layer="swall_right" checked /><span class="swatch" style="background:#a3a7a2"></span>右岸側壁（土側垂直・内1:0.45）</label>
+            <label class="chk"><input type="checkbox" data-layer="left_levee" checked /><span class="swatch" style="background:#7ea45c"></span>左岸堤（盛土・ブロック張・道路）</label>
+            <label class="chk"><input type="checkbox" data-layer="foot_prot" checked /><span class="swatch" style="background:#969a94"></span>下流根固めブロック工</label>
+          </section>
+
+          <section class="group">
+            <h3>地形・足場・施工計画補助</h3>
+            <label class="chk"><input type="checkbox" data-layer="terrain" checked /><span class="swatch" style="background:#5c7448"></span>高精細地形（背面堆砂・地質付）</label>
+            <div class="slider-row">
+              <span>地形不透明度</span>
+              <input type="range" id="terrain-opacity" min="0.15" max="1" step="0.05" value="1" />
+              <span id="terrain-opacity-val">100%</span>
+            </div>
+            <label class="chk"><input type="checkbox" data-layer="catwalk" /><span class="swatch" style="background:#eec018"></span>キャットウォーク・昇降階段塔（強制表示）</label>
+            <label class="chk"><input type="checkbox" data-layer="color_blocks" /><span class="swatch" style="background:#38bdf8"></span>主堤 打設ブロック色分け（B1〜B4）</label>
+            <label class="chk"><input type="checkbox" data-layer="excavation_vol" /><span class="swatch" style="background:#eb762a"></span>床掘ボリューム（半透明可視化）</label>
+            <label class="chk"><input type="checkbox" data-layer="temp_site" /><span class="swatch" style="background:#ecb21c"></span>仮設設備・重機・水替え（強制表示）</label>
+            <label class="chk"><input type="checkbox" data-layer="crane_rings" /><span class="swatch" style="background:#f59e0b"></span>25tクレーン作業半径 (R14/20/26m)</label>
+            <label class="chk"><input type="checkbox" data-layer="contours" checked /><span class="swatch" style="background:#f8fafc"></span>等高線（1m / 5m計曲線）</label>
+            <label class="chk"><input type="checkbox" data-layer="labels" checked /><span class="swatch" style="background:#38bdf8"></span>構造物・測点ラベル</label>
+            <label class="chk"><input type="checkbox" data-layer="water" checked /><span class="swatch" style="background:#428a9c"></span>平常時 渓流水（細い流れ）</label>
+            <label class="chk"><input type="checkbox" data-layer="water_flood" /><span class="swatch" style="background:#7c9a9e"></span>出水時（洪水想定シミュレーション）</label>
+            <label class="chk"><input type="checkbox" data-layer="nature" checked /><span class="swatch" style="background:#2e5630"></span>多層スギ林・広葉樹・堆砂玉石</label>
+          </section>
+
+          <section class="group">
+            <h3>日照・ライティング</h3>
+            <div class="slider-row">
+              <span>太陽方位</span>
+              <input type="range" id="sun-azimuth" min="0" max="360" step="1" value="138" />
+              <span id="sun-azimuth-val">138°</span>
+            </div>
+            <div class="slider-row">
+              <span>太陽高度</span>
+              <input type="range" id="sun-elevation" min="12" max="82" step="1" value="46" />
+              <span id="sun-elevation-val">46°</span>
+            </div>
+          </section>
+        </div>
+
+        <!-- タブ2: 主堤打設割り・複数同時打設・仮水通し・技術基準 -->
+        <div class="tab-content" id="tab-pouring">
+          <section class="group">
+            <h3>日別打設計画（複数同時打設 × 仮水通し）</h3>
+            <div class="sim-grid">
+              <label>日別打設スケジュール案（1日上限比較）
+                <select id="sim-plan-case">
+                  <option value="150" selected>ポンプ併用 / 150m³上限 (20回・複数8回)</option>
+                  <option value="110">クレーン1台 / 110m³上限 (24回・複数4回)</option>
+                </select>
+              </label>
+            </div>
+            <div class="slider-row">
+              <span>日別3D再生</span>
+              <input type="range" id="daily-session-slider" min="0" max="20" step="1" value="0" />
+              <span id="daily-session-txt">通常</span>
+            </div>
+            <div class="preset-clips" style="margin-bottom:8px;">
+              <button class="mini-btn" id="btn-daily-play">▶ 日別打設再生</button>
+              <button class="mini-btn" id="btn-daily-reset">通常表示へ戻す</button>
+            </div>
+            <div id="pouring-kpi-cards" class="qty-cards"></div>
+          </section>
+
+          <section class="group">
+            <h3>日別打設工程表（クリックで3D＆仮水通し・水替切替）</h3>
+            <div class="table-wrap" style="max-height:195px;">
+              <table id="daily-table">
+                <thead>
+                  <tr><th>回(日)</th><th>打設ブロック</th><th class="num">計m³</th><th>水通し/水替</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="group">
+            <h3>1日打設条件シミュレータ（個別ロット照査）</h3>
+            <div class="sim-grid">
+              <label>打設工法
+                <select id="sim-method">
+                  <option value="pump" selected>ポンプ併用 / 2台体制 (28m³/h)</option>
+                  <option value="crane">クレーン＋バケット1台 (18m³/h)</option>
+                </select>
+              </label>
+              <label>外気温条件
+                <select id="sim-temp">
+                  <option value="under25" selected>25℃未満 (打重ね 2.5h)</option>
+                  <option value="over25">25℃以上 (打重ね 2.0h)</option>
+                </select>
+              </label>
+            </div>
+            <div class="slider-row">
+              <span>1日打設上限</span>
+              <input type="range" id="sim-daily-limit" min="60" max="150" step="10" value="150" />
+              <span id="sim-daily-limit-val">150 m³</span>
+            </div>
+            <div class="table-wrap" style="max-height:150px;">
+              <table id="pouring-table">
+                <thead>
+                  <tr><th>ロット</th><th class="num">量(m³)</th><th class="num">台数</th><th>養生</th><th>判定</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="group">
+            <h3>砂防技術基準・キャットウォーク基準</h3>
+            <div id="standards-box" class="std-box"></div>
+          </section>
+        </div>
+
+        <!-- タブ2: リアルタイム断面カット -->
+        <div class="tab-content" id="tab-clipping">
+          <section class="group">
+            <h3>3軸リアルタイム断面スライス</h3>
+            <p class="hint">構造物の根入れ・主堤断面・垂直壁と左岸堤の複合断面をリアルタイム確認できます。</p>
+
+            <label class="chk"><input type="checkbox" id="clip-x-en" /> 縦断断面（X軸スライス）</label>
+            <div class="slider-row">
+              <span>X位置</span>
+              <input type="range" id="clip-x-val" min="-45" max="45" step="0.5" value="0" />
+              <span id="clip-x-txt">0.0 m</span>
+            </div>
+
+            <label class="chk"><input type="checkbox" id="clip-z-en" /> 横断断面（Z軸スライス）</label>
+            <div class="slider-row">
+              <span>Z位置</span>
+              <input type="range" id="clip-z-val" min="-48" max="55" step="0.5" value="8" />
+              <span id="clip-z-txt">+8.0 m</span>
+            </div>
+
+            <label class="chk"><input type="checkbox" id="clip-y-en" /> 水平断面（標高ELスライス）</label>
+            <div class="slider-row">
+              <span>EL標高</span>
+              <input type="range" id="clip-y-val" min="-2" max="24" step="0.25" value="10" />
+              <span id="clip-y-txt">EL.255.0m</span>
+            </div>
+
+            <div class="preset-clips">
+              <button class="mini-btn" data-clip-preset="long_center">渓流中心 縦断</button>
+              <button class="mini-btn" data-clip-preset="cross_main">主堤軸 横断</button>
+              <button class="mini-btn" data-clip-preset="cross_apron">水叩き・左岸堤 横断</button>
+              <button class="mini-btn" data-clip-preset="reset">断面解除</button>
+            </div>
+          </section>
+        </div>
+
+        <!-- タブ3: BIM/CIM 数量集計表 -->
+        <div class="tab-content" id="tab-quantities">
+          <section class="group">
+            <h3>3Dソリッド概算数量集計</h3>
+            <div id="qty-summary-cards" class="qty-cards"></div>
+            <div class="table-wrap">
+              <table id="qty-table">
+                <thead>
+                  <tr><th>工種・名称</th><th class="num">数量</th><th>単位</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <h3 style="margin-top:12px;">主堤リフト別打設量</h3>
+            <div class="table-wrap">
+              <table id="lift-table">
+                <thead>
+                  <tr><th>リフト</th><th>標高範囲</th><th class="num">体積(m³)</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </aside>
+
+      <!-- 下部 4D 施工ステップタイムライン -->
+      <section class="timeline-bar">
+        <div class="timeline-controls">
+          <button id="btn-step-prev" class="step-btn" title="前の工程">⏮</button>
+          <button id="btn-step-play" class="step-btn play" title="施工工程を自動再生">▶ 再生</button>
+          <button id="btn-step-next" class="step-btn" title="次の工程">⏭</button>
+        </div>
+        <div class="timeline-slider-wrap">
+          <div class="step-header">
+            <span id="step-name" class="step-name">STEP 7: 下流根固め・水替え撤去・完成通水</span>
+            <span id="step-desc" class="step-desc">読み込み中...</span>
+          </div>
+          <input type="range" id="step-slider" min="0" max="7" step="1" value="7" />
+          <div class="step-ticks">
+            <span>0:現況</span><span>1:仮設・水替</span><span>2:床掘</span><span>3:主堤基礎</span><span>4:主堤中段</span><span>5:主堤完成</span><span>6:水叩・左岸堤</span><span>7:完成通水</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

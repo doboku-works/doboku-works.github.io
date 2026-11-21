@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TOKYO UNDERGROUND — 都市地下解剖キューブ・ジオラマ 3D/4D</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23090f1d'/><path d='M16 4l11 6v12l-11 6-11-6V10z' fill='none' stroke='%2338bdf8' stroke-width='2.2'/><path d='M5 14l11 6 11-6M5 19l11 6 11-6' fill='none' stroke='%23f97316' stroke-width='1.8'/></svg>" />
+  <link rel="stylesheet" href="./style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../../libs/three/build/three.module.js",
+        "three/addons/": "../../../libs/three/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body class="theme-cyber">
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <a href="../../../index.html" style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:6px;background:rgba(56,189,248,0.16);border:1px solid rgba(56,189,248,0.48);color:#e0f2fe;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;" title="ポートフォリオ一覧へ戻る">← 一覧へ</a>
+        <span class="badge">CIVIL ART 3D</span>
+        <div class="titles">
+          <h1 id="project-title">TOKYO UNDERGROUND — 都市地下解剖キューブ・ジオラマ</h1>
+          <p id="project-subtitle">36m×36m×深さ34m 5層インフラ断面（高架橋・共同溝・ライフライン・5層地質・場所打ち杭・開削地下鉄・大深度シールドTBM）</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="camera-presets" id="camera-presets">
+          <button data-cam="iso" class="active">ジオラマ俯瞰</button>
+          <button data-cam="tbm">シールドTBM</button>
+          <button data-cam="subway">開削地下鉄</button>
+          <button data-cam="lifeline">共同溝・埋設管</button>
+          <button data-cam="exploded">5層分解全体</button>
+          <button data-cam="low">地下見上げ</button>
+        </div>
+        <button id="btn-theme" class="tool-btn accent">🌙 サイバー / 昼切替</button>
+        <button id="btn-auto-demo" class="tool-btn primary">▶ 自動ショーケース</button>
+        <button id="btn-shot" class="tool-btn">PNG</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <div id="canvas-container">
+        <div id="loading-overlay">
+          <div class="spinner"></div>
+          <div id="loading-text">都市地下 5層ジオラマモデルを展開中...</div>
+        </div>
+        <div id="labels-layer"></div>
+
+        <!-- 右上：地質柱状図 ＆ インフラ埋設深度プロファイル HUD -->
+        <div class="strata-hud">
+          <div class="hud-head">
+            <span>🪨 地質柱状図 ＆ 地下インフラ深度</span>
+            <span class="depth-tag">GL 0 〜 -34m</span>
+          </div>
+          <div id="strata-chart" class="strata-chart"></div>
+          <div class="infra-legend" id="infra-legend"></div>
+        </div>
+      </div>
+
+      <!-- 左コントロールパネル -->
+      <aside class="sidebar">
+        <section class="group">
+          <h3>アート表示モード（ワンクリック）</h3>
+          <div class="mode-grid">
+            <button class="mode-btn active" data-mode="cutaway">💎 L字クリスタル透視</button>
+            <button class="mode-btn" data-mode="solid">🧱 地質断面ソリッド</button>
+            <button class="mode-btn" data-mode="skeleton">🩻 地下インフラ骨格</button>
+            <button class="mode-btn" data-mode="explode">🧩 5層パカッと分解</button>
+          </div>
+        </section>
+
+        <section class="group">
+          <h3>インタラクティブ・スライダー</h3>
+          <label class="slider-row">
+            <div class="s-head"><span>🧩 5層 層別分解（Exploded View）</span><strong id="val-explode">0 %</strong></div>
+            <input type="range" id="sl-explode" min="0" max="100" step="1" value="0" />
+          </label>
+          <label class="slider-row">
+            <div class="s-head"><span>💎 手前地層の透明度（X-Ray）</span><strong id="val-soil-front">24 %</strong></div>
+            <input type="range" id="sl-soil-front" min="0" max="100" step="1" value="24" />
+          </label>
+          <label class="slider-row">
+            <div class="s-head"><span>🪨 奥側地層の透明度</span><strong id="val-soil-back">96 %</strong></div>
+            <input type="range" id="sl-soil-back" min="0" max="100" step="1" value="96" />
+          </label>
+        </section>
+
+        <section class="group">
+          <h3>5層レイヤー ＆ 稼働ギミック</h3>
+          <label class="chk"><input type="checkbox" data-layer="l1" checked /><span class="sw" style="background:#748698"></span>L1: 都市高速 鋼箱桁高架橋</label>
+          <label class="chk"><input type="checkbox" data-layer="l2" checked /><span class="sw" style="background:#9ca3af"></span>L2: 地表交差点・角ビル・街路樹</label>
+          <label class="chk"><input type="checkbox" data-layer="l3" checked /><span class="sw" style="background:#38bdf8"></span>L3: 共同溝・水道・ガス・下水道</label>
+          <label class="chk"><input type="checkbox" data-layer="l4" checked /><span class="sw" style="background:#22c55e"></span>L4: 開削地下鉄 ＆ 場所打ちRC杭(8本)</label>
+          <label class="chk"><input type="checkbox" data-layer="l5" checked /><span class="sw" style="background:#ef4444"></span>L5: 大深度シールド ＆ 稼働中TBM</label>
+          <label class="chk"><input type="checkbox" id="chk-labels" checked /><span class="sw" style="background:#fbbf24"></span>構造・深度3Dラベル</label>
+          <label class="chk"><input type="checkbox" id="chk-rotate" /><span class="sw" style="background:#a855f7"></span>展示ターンテーブル自動回転</label>
+        </section>
+
+        <section class="group">
+          <h3>都市土木のリアル構造ポイント</h3>
+          <div class="note-card">
+            ・<b>支持層根入れ</b>：高架橋の場所打ちRC杭8本は軟弱な沖積粘土(Ac)を貫通し、<b>東京礫層(Dg・N≥50)</b>へガッチリ定着。<br>
+            ・<b>地下立体交差</b>：杭列の隙間を縫うように、浅層に<b>開削地下鉄(GL-11m)</b>、さらに6m下に<b>大深度シールド2本(GL-24m)</b>が完全無干渉で交差。<br>
+            ・<b>稼働TBM断面</b>：手前上1/4をカットアウェイし、回転カッターヘッド・推進ジャッキ16本・スクリューコンベヤ・エレクターを可視化。
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

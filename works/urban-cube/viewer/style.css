@@ -1,0 +1,104 @@
+:root {
+  --bg: #070d1a;
+  --panel: rgba(11, 18, 34, 0.88);
+  --border: rgba(148, 163, 184, 0.24);
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #app { width: 100%; height: 100%; overflow: hidden; font-family: "Segoe UI", "Meiryo", sans-serif; background: var(--bg); color: var(--text); }
+
+.topbar {
+  height: 52px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px; background: rgba(10, 16, 30, 0.96); border-bottom: 1px solid var(--border); gap: 10px;
+}
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.badge {
+  background: linear-gradient(135deg, #0284c7, #ec4899); color: #fff; font-weight: 800;
+  font-size: 11px; padding: 4px 8px; border-radius: 6px; letter-spacing: 0.04em; white-space: nowrap;
+}
+.titles h1 { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.titles p { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.top-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.camera-presets { display: flex; gap: 3px; background: rgba(30, 41, 59, 0.78); padding: 3px; border-radius: 8px; border: 1px solid var(--border); }
+.camera-presets button, .tool-btn {
+  border: 1px solid transparent; background: transparent; color: #cbd5e1;
+  font-size: 11px; padding: 5px 8px; border-radius: 6px; cursor: pointer; transition: 0.15s; white-space: nowrap;
+}
+.camera-presets button:hover, .tool-btn:hover { background: rgba(56, 189, 248, 0.18); color: #fff; }
+.camera-presets button.active { background: #0284c7; color: #fff; font-weight: 600; }
+.tool-btn { border-color: var(--border); background: #1e293b; }
+.tool-btn.primary { background: linear-gradient(135deg, #0284c7, #6366f1); border-color: #38bdf8; color: #fff; font-weight: 700; }
+.tool-btn.accent { background: rgba(236, 72, 153, 0.2); border-color: rgba(236, 72, 153, 0.55); color: #fbcfe8; font-weight: 600; }
+.tool-btn.running { background: #ea580c; border-color: #fb923c; }
+
+.workspace { position: relative; width: 100%; height: calc(100% - 52px); }
+#canvas-container { position: absolute; inset: 0; }
+#labels-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.label-3d {
+  position: absolute; transform: translate(-50%, -100%); background: rgba(9, 15, 30, 0.86);
+  color: #f8fafc; border: 1px solid rgba(56, 189, 248, 0.55); padding: 2px 7px; border-radius: 5px;
+  font-size: 10.5px; font-weight: 600; white-space: nowrap; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+}
+
+#loading-overlay {
+  position: absolute; inset: 0; z-index: 40; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px; background: rgba(7, 13, 26, 0.94);
+}
+#loading-overlay.hidden { display: none; }
+.spinner { width: 38px; height: 38px; border: 3px solid rgba(56, 189, 248, 0.25); border-top-color: #38bdf8; border-radius: 50%; animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.sidebar {
+  position: absolute; top: 12px; left: 12px; bottom: 12px; width: 300px; z-index: 20;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px; overflow-y: auto; backdrop-filter: blur(10px); box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+}
+.group { margin-bottom: 13px; }
+.group h3 { font-size: 11.5px; color: #7dd3fc; margin-bottom: 8px; border-left: 3px solid #38bdf8; padding-left: 7px; }
+
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mode-btn {
+  background: rgba(30, 41, 59, 0.78); border: 1px solid var(--border); color: #e2e8f0;
+  border-radius: 7px; padding: 7px 6px; font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.15s;
+}
+.mode-btn:hover { border-color: #38bdf8; color: #fff; }
+.mode-btn.active { background: rgba(2, 132, 199, 0.34); border-color: #38bdf8; color: #fff; }
+
+.slider-row { display: block; margin-bottom: 9px; }
+.s-head { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; color: #cbd5e1; }
+.s-head strong { color: #38bdf8; font-variant-numeric: tabular-nums; }
+.slider-row input[type="range"] { width: 100%; accent-color: #38bdf8; cursor: pointer; }
+
+.chk { display: flex; align-items: center; gap: 7px; font-size: 11.5px; margin-bottom: 6px; cursor: pointer; color: #e2e8f0; }
+.sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; flex-shrink: 0; }
+
+.note-card {
+  background: rgba(30, 41, 59, 0.72); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 9px; font-size: 10.8px; line-height: 1.55; color: #cbd5e1;
+}
+
+/* 右上：地質柱状図 HUD */
+.strata-hud {
+  position: absolute; top: 12px; right: 12px; width: 288px; z-index: 20;
+  background: var(--panel); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px;
+  padding: 10px 12px; backdrop-filter: blur(10px); box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+}
+.hud-head { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; font-weight: 700; margin-bottom: 8px; color: #e0f2fe; }
+.depth-tag { background: rgba(56, 189, 248, 0.18); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.45); padding: 1px 6px; border-radius: 99px; font-size: 10px; }
+
+.strata-chart { display: flex; flex-direction: column; gap: 3px; margin-bottom: 9px; }
+.st-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 7px; border-radius: 5px; font-size: 10.5px; color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.75); border: 1px solid rgba(255,255,255,0.14);
+}
+.st-bar .nv { font-size: 9.5px; opacity: 0.92; font-weight: 700; }
+
+.infra-legend { display: flex; flex-direction: column; gap: 3px; border-top: 1px solid var(--border); padding-top: 7px; }
+.il-row { display: flex; justify-content: space-between; align-items: center; font-size: 10.2px; color: #cbd5e1; }
+.il-left { display: flex; align-items: center; gap: 6px; }
+.il-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.il-gl { color: #7dd3fc; font-weight: 600; font-variant-numeric: tabular-nums; }

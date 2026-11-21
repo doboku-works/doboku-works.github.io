@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>新青葉川橋 少数鈑桁橋 送り出し架設 4D/力学シミュレーション</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230b1320'/><path d='M3 18h26v3H3zm5 3h3v7H8zm13 0h3v7h-3z' fill='%2338bdf8'/><path d='M18 14l11 4H18z' fill='%23ea580c'/></svg>" />
+  <link rel="stylesheet" href="./style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../../libs/three/build/three.module.js",
+        "three/addons/": "../../../libs/three/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <a href="../../../index.html" style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:6px;background:rgba(56,189,248,0.16);border:1px solid rgba(56,189,248,0.48);color:#e0f2fe;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;" title="ポートフォリオ一覧へ戻る">← 一覧へ</a>
+        <span class="badge">少数鈑桁 4D/FEM</span>
+        <div class="titles">
+          <h1 id="project-title">新青葉川橋（仮称） 鋼2主桁（少数鈑桁）橋 送り出し架設シミュレーション</h1>
+          <p id="project-subtitle">3径間連続 鋼2主桁（合理化少数鈑桁・合成床版）橋（L=136m: 42+52+42m）／底鋼板先行一体送り出し・手延べ機34m・全10ステージ</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="camera-presets" id="camera-presets">
+          <button data-cam="overview" class="active">全体鳥瞰</button>
+          <button data-cam="a1_pusher">押し出し装置(A1)</button>
+          <button data-cam="yard_trolley">8輪台車(ヤード)</button>
+          <button data-cam="p1_roller">ローラー台車(P1)</button>
+          <button data-cam="p2_tip">P2到達・たわみ</button>
+          <button data-cam="underside">桁下・合成床版</button>
+          <button data-cam="side">側面全景</button>
+        </div>
+        <button id="btn-wireframe" class="tool-btn">網目</button>
+        <button id="btn-screenshot" class="tool-btn primary">PNG保存</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <div id="canvas-container">
+        <div id="loading-overlay">
+          <div class="spinner"></div>
+          <div id="loading-text">3Dモデルと連続梁FEM解析データを読み込み中...</div>
+        </div>
+        <div id="labels-layer"></div>
+
+        <!-- 右上: リアルタイム構造力学・反力・たわみモニター HUD -->
+        <div id="mech-hud" class="hud-panel">
+          <div class="hud-head">
+            <span>📊 送り出し力学モニター（1主桁）</span>
+            <span id="mech-status-badge" class="badge-ok">照査 OK</span>
+          </div>
+          <div class="mech-kpis">
+            <div class="mkpi"><span class="k">主桁先端 X</span><span class="v" id="m-xfront">0.0 m</span></div>
+            <div class="mkpi"><span class="k">手延べ先端 X</span><span class="v" id="m-xtip">34.0 m</span></div>
+            <div class="mkpi"><span class="k">先端たわみ</span><span class="v warn" id="m-defl">0.0 mm</span></div>
+            <div class="mkpi"><span class="k">パッチ照査比</span><span class="v ok" id="m-patch">0.0 %</span></div>
+          </div>
+          <div class="react-bars" id="react-bars">
+            <div class="rrow"><span>A1 (0m)</span><div class="bar-bg"><div class="bar-fill" id="bar-A1"></div></div><span class="rval" id="val-A1">0 kN</span></div>
+            <div class="rrow"><span>P1 (42m)</span><div class="bar-bg"><div class="bar-fill p1" id="bar-P1"></div></div><span class="rval" id="val-P1">0 kN</span></div>
+            <div class="rrow"><span>P2 (94m)</span><div class="bar-bg"><div class="bar-fill p2" id="bar-P2"></div></div><span class="rval" id="val-P2">0 kN</span></div>
+            <div class="rrow"><span>A2 (136m)</span><div class="bar-bg"><div class="bar-fill a2" id="bar-A2"></div></div><span class="rval" id="val-A2">0 kN</span></div>
+          </div>
+          <div class="bmd-wrap">
+            <div class="bmd-title">
+              <span>弾性たわみ曲線（青）＆ 曲げモーメント BMD（橙）</span>
+              <span id="m-negm">Max -M: 0 kN·m</span>
+            </div>
+            <canvas id="bmd-canvas" width="320" height="86"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 左サイドパネル -->
+      <aside class="sidebar">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="sim">送り出し制御</button>
+          <button class="tab-btn" data-tab="layers">レイヤー</button>
+          <button class="tab-btn" data-tab="qty">諸元・数量</button>
+        </div>
+
+        <!-- タブ1: 送り出し制御＆ステージ一覧 -->
+        <div class="tab-content active" id="tab-sim">
+          <section class="group">
+            <h3>シミュレーション設定</h3>
+            <div class="ctrl-grid">
+              <label>再生速度
+                <select id="sim-speed">
+                  <option value="0.5">0.5x（じっくり観察）</option>
+                  <option value="1.0" selected>1.0x（標準）</option>
+                  <option value="2.0">2.0x（早送り）</option>
+                </select>
+              </label>
+              <label>たわみ表示倍率
+                <select id="defl-scale">
+                  <option value="1.0" selected>1x（実寸変形・推奨）</option>
+                  <option value="2.0">2x（視認強調）</option>
+                  <option value="3.0">3x（挙動解析用）</option>
+                </select>
+              </label>
+            </div>
+            <label class="chk" style="margin-top:6px;"><input type="checkbox" id="chk-follow-tip" /> カメラを手延べ機先端へ自動追従</label>
+          </section>
+
+          <section class="group">
+            <h3>施工ステージ（クリックで即時ジャンプ）</h3>
+            <div id="stage-list" class="stage-list"></div>
+          </section>
+
+          <section class="group">
+            <h3>少数鈑桁（合理化2主桁）の要諦</h3>
+            <div class="std-card">
+              ・<b>合理化2主桁（G1/G2・間隔6.0m・桁高2.6m）</b>：<b>対傾構・横構・水平補剛材・張出しブラケットを省略</b>し、厚肉腹板＋内側シンプルI形横桁（約8.5mピッチ）＋支点上フルウェブ横桁のみで構成<br>
+              ・<b>合成床版 底鋼板先行敷設・一体送り出し</b>：地組ヤードで<b>底鋼板パネル（型枠・作業床・上横構兼用）</b>を主桁へ先行敷設して同時送り出し→着座後に配筋・現場打ちコンクリート打設<br>
+              ・<b>手延べ機 34.0m（支間比0.65）</b>：先端ソリ <b>920mm</b> ＞ 最大先端たわみ（安全乗り上げ ✅）<br>
+              ・<b>ジャッキダウン</b>：手延べ機解体後、鋼製サンドル＋鉛直ジャッキで <b>1.15m降下</b> し積層ゴム支承へ着座
+            </div>
+          </section>
+        </div>
+
+        <!-- タブ2: レイヤー -->
+        <div class="tab-content" id="tab-layers">
+          <section class="group">
+            <h3>構造物・仮設工 表示切替</h3>
+            <label class="chk"><input type="checkbox" data-layer="girder" checked /><span class="swatch" style="background:#768a9c"></span>合理化2主桁（厚肉腹板・シンプルI形横桁）</label>
+            <label class="chk"><input type="checkbox" data-layer="nose" checked /><span class="swatch" style="background:#d44424"></span>手延べ機（34m・先端ソリ付）</label>
+            <label class="chk"><input type="checkbox" data-layer="substructure" checked /><span class="swatch" style="background:#bfc4c0"></span>RC下部工（A1/P1/P2/A2・積層ゴム支承）</label>
+            <label class="chk"><input type="checkbox" data-layer="deck" checked /><span class="swatch" style="background:#9ca3af"></span>合成床版（先行底鋼板パネル・配筋・打設・舗装）</label>
+            <label class="chk"><input type="checkbox" data-layer="temp_yard" checked /><span class="swatch" style="background:#eab308"></span>地組ヤード・ベント・軌条・ローラー・クレーン</label>
+            <label class="chk"><input type="checkbox" data-layer="temp_safety" checked /><span class="swatch" style="background:#2e9456"></span>橋脚足場・昇降階段塔・道路上空防護工</label>
+            <label class="chk"><input type="checkbox" data-layer="env" checked /><span class="swatch" style="background:#607a4a"></span>河川・堤防道路・走行車両・樹木</label>
+            <label class="chk"><input type="checkbox" data-layer="labels" checked /><span class="swatch" style="background:#38bdf8"></span>下部工・環境ラベル</label>
+          </section>
+        </div>
+
+        <!-- タブ3: 諸元・数量 -->
+        <div class="tab-content" id="tab-qty">
+          <section class="group">
+            <h3>主要諸元・力学照査サマリー</h3>
+            <div id="qty-cards" class="qty-cards"></div>
+            <div class="table-wrap" style="margin-top:8px;">
+              <table id="qty-table">
+                <thead><tr><th>項目</th><th class="num">数量</th><th>単位</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </aside>
+
+      <!-- 下部 連続送り出しタイムラインバー -->
+      <section class="timeline-bar">
+        <div class="timeline-controls">
+          <button id="btn-prev" class="step-btn" title="前のステージ">⏮</button>
+          <button id="btn-play" class="step-btn play">▶ 送り出し再生</button>
+          <button id="btn-next" class="step-btn" title="次のステージ">⏭</button>
+        </div>
+        <div class="timeline-slider-wrap">
+          <div class="step-header">
+            <span id="stage-name" class="step-name">STAGE 1: 仮設工</span>
+            <span id="stage-desc" class="step-desc">読み込み中...</span>
+          </div>
+          <input type="range" id="timeline-slider" min="0" max="1000" step="1" value="0" />
+          <div class="step-ticks">
+            <span>1:仮設</span><span>2:1次地組</span><span>3:1次送出</span><span>4:2次地組</span><span>5:2次送出(52m)</span><span>6:3次地組</span><span>7:最終送出</span><span>8:解体・降下</span><span>9:配筋・打設</span><span>10:舗装・完成</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

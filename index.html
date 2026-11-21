@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DOBOKU WORKS — 土木 3D/4D シミュレーション ＆ インフラ可視化 技術デモ</title>
+  <meta name="description" content="現場の土木基準と構造力学FEMを、ブラウザで直接操作できるインタラクティブ3D/4Dシミュレーションとインフラデジタルアートへ。砂防堰堤・少数鈑桁送り出し架設・都市地下解剖キューブを公開中の個人技術デモサイト。" />
+  <meta property="og:title" content="DOBOKU WORKS — 土木 3D/4D ＆ インフラ可視化 技術デモ" />
+  <meta property="og:description" content="ブラウザを開くだけで誰でも操作できる土木施工4Dシミュレーション＆力学可視化Webビューア集（個人技術検証・非営利デモ）。" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://doboku-works.github.io/" />
+  <meta property="og:image" content="https://doboku-works.github.io/assets/thumbs/urban_cube.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="DOBOKU WORKS — 土木 3D/4D ＆ インフラ可視化 技術デモ" />
+  <meta name="twitter:description" content="現場の土木基準と構造力学FEMをブラウザで直接操作できる3D/4D技術デモ＆インフラアート集。" />
+  <meta name="twitter:image" content="https://doboku-works.github.io/assets/thumbs/urban_cube.jpg" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23081020'/><path d='M16 4l11 6v12l-11 6-11-6V10z' fill='none' stroke='%2338bdf8' stroke-width='2.2'/><path d='M6 17h20M11 17v7M21 17v7' stroke='%23f97316' stroke-width='2'/></svg>" />
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="#top" class="brand">
+        <span class="brand-mark">DW</span>
+        <div>
+          <span class="brand-name">DOBOKU WORKS</span>
+          <span class="brand-sub">Civil Engineering 3D / 4D &amp; FEM Visualization</span>
+        </div>
+      </a>
+      <nav class="nav-links">
+        <a href="#works">3Dデモ体験</a>
+        <a href="#themes">研究テーマ</a>
+        <a href="#stack">技術構成</a>
+        <a href="#about" class="nav-cta">このサイトについて</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-grid-bg" aria-hidden="true"></div>
+      <div class="container hero-inner">
+        <div class="hero-pill">⚡ 全作品 ブラウザで直接グルグル操作可能（インストール不要・WebGL）</div>
+        <h1>現場の土木基準を、<br><span class="grad-text">動く 3D / 4D と力学</span>で可視化する。</h1>
+        <p class="hero-lead">
+          砂防堰堤の打設割・段階水替え、合理化少数鈑桁橋の合成床版一体送り出し＆FEM弾性たわみ、都市地下34mの5層インフラ解剖ジオラマまで。
+          「本物の現場ディテール」と「コード駆動のインタラクティブWeb 3D」を掛け合わせた土木可視化＆インフラアートを、個人の技術検証として制作・公開しています。
+        </p>
+        <div class="hero-actions">
+          <a href="#works" class="btn btn-primary">🚀 インタラクティブ 3D デモを触る</a>
+          <a href="https://github.com/doboku-works" target="_blank" rel="noopener noreferrer" class="btn btn-ghost">GitHub (doboku-works) ↗</a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat">
+            <span class="stat-val">3 Demos</span>
+            <span class="stat-label">WebGL 実機体験可能</span>
+          </div>
+          <div class="stat">
+            <span class="stat-val">FEM + 4D</span>
+            <span class="stat-label">力学・工程リアルタイム連動</span>
+          </div>
+          <div class="stat">
+            <span class="stat-val">ブラウザ完結</span>
+            <span class="stat-label">専用CAD不要でPC/スマホ閲覧</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Works Gallery -->
+    <section id="works" class="section">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">INTERACTIVE 3D GALLERY</span>
+            <h2>ブラウザで触れる 3D / 4D 技術デモ・作品</h2>
+          </div>
+          <div class="filter-tabs" id="filter-tabs">
+            <button class="ftab active" data-filter="all">すべて (3)</button>
+            <button class="ftab" data-filter="art">土木アート</button>
+            <button class="ftab" data-filter="bridge">橋梁・力学FEM</button>
+            <button class="ftab" data-filter="sabo">砂防・施工計画</button>
+          </div>
+        </div>
+
+        <div class="works-grid">
+          <!-- Work 1: Urban Cutaway Cube -->
+          <article class="work-card" data-cat="art">
+            <a href="./works/urban-cube/viewer/index.html" class="card-thumb-link">
+              <img src="./assets/thumbs/urban_cube.jpg" alt="TOKYO UNDERGROUND 都市地下解剖キューブ・ジオラマ" loading="lazy" />
+              <span class="thumb-badge art">NEW / 土木デジタルアート</span>
+              <span class="thumb-play">▶ 3Dビューアを起動</span>
+            </a>
+            <div class="card-body">
+              <div class="tags">
+                <span>5層Exploded View</span><span>L字クリスタル透視</span><span>稼働TBM</span><span>GL -34m</span>
+              </div>
+              <h3>TOKYO UNDERGROUND — 都市地下解剖キューブ</h3>
+              <p>
+                36m×36m×深さ34mの都市交差点直下をスパッと輪切り。都市高速高架橋・共同溝＆上下水道・5層地質断面（東京礫層支持杭）・開削地下鉄・1/4カットアウェイ稼働中シールドマシンTBMまでを完全無干渉で立体交差再現。
+              </p>
+              <ul class="feat-list">
+                <li>ワンクリックで「L字透視 / ソリッド地質 / 骨格 / 5層パカッと分解」切替</li>
+                <li>サイバーネオン ⇔ 昼ミニチュア模型テーマ切替・地質柱状図HUD付</li>
+              </ul>
+              <div class="card-actions">
+                <a href="./works/urban-cube/viewer/index.html" class="btn btn-primary btn-sm">🚀 ブラウザで3Dを操作する</a>
+              </div>
+            </div>
+          </article>
+
+          <!-- Work 2: Bridge Launching -->
+          <article class="work-card" data-cat="bridge">
+            <a href="./works/bridge-launching/viewer/index.html" class="card-thumb-link">
+              <img src="./assets/thumbs/bridge_launch.jpg" alt="新青葉川橋 少数鈑桁橋 送り出し架設 4D/FEM シミュレーション" loading="lazy" />
+              <span class="thumb-badge bridge">4D ＆ 1D連続梁FEM連動</span>
+              <span class="thumb-play">▶ 3Dビューアを起動</span>
+            </a>
+            <div class="card-body">
+              <div class="tags">
+                <span>合理化2主桁</span><span>合成床版先行敷設</span><span>油圧押し出し装置</span><span>全10ステージ</span>
+              </div>
+              <h3>新青葉川橋 — 少数鈑桁橋 送り出し架設 ＆ 構造力学FEM</h3>
+              <p>
+                3径間連続 鋼2主桁橋（L=136m: 42+52+42m）の河川52m＆供用中堤防道路無ベント横断。対傾構・横構を省略した合理化2主桁に合成床版底鋼板パネルを先行敷設し、A1油圧ステップ押し出し装置と多軸エンドレスローラー台車で一体送り出し。
+              </p>
+              <ul class="feat-list">
+                <li>1D Euler-Bernoulli 連続梁FEMによる弾性たわみ(-833mm)・BMD・支点反力リアルタイム連動</li>
+                <li>手延べ機先端ソリ(920mm)乗り上げ・鋼製サンドル降下・上側配筋〜打設まで全10工程</li>
+              </ul>
+              <div class="card-actions">
+                <a href="./works/bridge-launching/viewer/index.html" class="btn btn-primary btn-sm">🚀 ブラウザで3Dを操作する</a>
+              </div>
+            </div>
+          </article>
+
+          <!-- Work 3: Sabo Dam -->
+          <article class="work-card" data-cat="sabo">
+            <a href="./works/sabo-dam/viewer/index.html" class="card-thumb-link">
+              <img src="./assets/thumbs/sabo_dam.jpg" alt="大沢川砂防堰堤 施工計画・段階水替え・打設割 3D BIM/CIM" loading="lazy" />
+              <span class="thumb-badge sabo">砂防技術基準準拠 4D</span>
+              <span class="thumb-play">▶ 3Dビューアを起動</span>
+            </a>
+            <div class="card-body">
+              <div class="tags">
+                <span>打設割・鉛直目地</span><span>段階水替え切替</span><span>水叩き後施工</span><span>距離計測</span>
+              </div>
+              <h3>大沢川砂防堰堤 — 基準準拠 施工計画・段階水替え 4D</h3>
+              <p>
+                不透過型重力式コンクリート砂防堰堤の施工計画3Dモデル。鉛直打設目地・日打設量上限・安衛則キャットウォークを盛り込み、床掘り水替えから「現況河床まで立ち上げて水通し確保→水替え不要化→水叩き後施工」の現実手順を再現。
+              </p>
+              <ul class="feat-list">
+                <li>主堤14ブロック＋リフト別の日別コンクリート打設スケジュール・数量表を連動表示</li>
+                <li>ブラウザ上で任意の2点間距離・標高差・勾配を測れる3D計測ツール搭載</li>
+              </ul>
+              <div class="card-actions">
+                <a href="./works/sabo-dam/viewer/index.html" class="btn btn-primary btn-sm">🚀 ブラウザで3Dを操作する</a>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Research & Demo Themes -->
+    <section id="themes" class="section section-alt">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">RESEARCH &amp; DEMO THEMES</span>
+            <h2>探求している技術テーマ・可視化表現</h2>
+          </div>
+        </div>
+        <div class="cap-grid">
+          <div class="cap-card">
+            <div class="cap-icon">🏗️</div>
+            <h3>施工基準・仮設手順の 4D 可視化</h3>
+            <p>図面や文章だけではイメージしにくい仮設切替・重機干渉・送り出し手順を、技術基準に基づきブラウザ上で自在に動かせる 4D モデルとして再現・検証しています。</p>
+          </div>
+          <div class="cap-card">
+            <div class="cap-icon">📐</div>
+            <h3>構造力学 FEM・数量計算とのリアルタイム連動</h3>
+            <p>Python で算出した弾性たわみ・曲げモーメント・支点反力・打設数量を 3D の変形や HUD モニターと同期させ、直感的に仕組みがわかる工学可視化を探求しています。</p>
+          </div>
+          <div class="cap-card">
+            <div class="cap-icon">🎨</div>
+            <h3>インフラの構造美を伝える土木デジタルアート</h3>
+            <p>普段は地面の下や仮設に隠れて見えない土木構造物の精巧さを、都市断面ジオラマや分解アニメーションに昇華し、インフラの面白さを広く伝える試みです。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tech Stack -->
+    <section id="stack" class="section">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">ARCHITECTURE</span>
+            <h2>コード駆動・完全ブラウザ完結の制作パイプライン</h2>
+          </div>
+        </div>
+        <div class="stack-bar">
+          <div class="stack-item"><strong>Python / NumPy / SciPy</strong><span>1D連続梁FEM・数量自動算出・プロシージャルPBR生成</span></div>
+          <div class="stack-item"><strong>Trimesh / glTF 2.0 (GLB)</strong><span>軽量・高精細ソリッド自動モデリング＆UV展開</span></div>
+          <div class="stack-item"><strong>Three.js / WebGL</strong><span>4Kシャドウ・IBL金属反射・リアルタイム頂点変形＆透視</span></div>
+          <div class="stack-item"><strong>Playwright + FFmpeg</strong><span>シネマティックカメラワークによる高画質MP4/GIF自動出力</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- About & Safety Notice -->
+    <section id="about" class="section section-alt">
+      <div class="container contact-box">
+        <div>
+          <span class="eyebrow">ABOUT &amp; POLICY</span>
+          <h2>このサイトについて・免責事項</h2>
+          <p class="contact-desc">
+            本サイトは、土木工学・施工計画・構造力学と WebGL（Three.js）を掛け合わせた個人の技術検証およびデジタルアート作品の公開アーカイブです。
+          </p>
+          <p class="safety-note">
+            ※本サイトに掲載しているすべての3Dモデル・地形・構造物諸元・力学データは、個人の学習・技術検証および公開デモのために独自設計した<strong>完全架空のオリジナルモデル</strong>であり、特定の実在工事・企業・発注者の機密情報は一切含んでいません。また、本サイトは非営利の個人技術デモサイトです。
+          </p>
+        </div>
+        <div class="contact-actions">
+          <a href="https://github.com/doboku-works" target="_blank" rel="noopener noreferrer" class="btn btn-primary">GitHub (doboku-works) を見る ↗</a>
+          <a href="#works" class="btn btn-ghost">3D デモ一覧へ戻る ↑</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span>© 2026 DOBOKU WORKS — Civil Engineering 3D/4D Tech Demo Archive</span>
+      <span>Hosted free &amp; securely on GitHub Pages (Static WebGL)</span>
+    </div>
+  </footer>
+
+  <script src="./assets/app.js"></script>
+</body>
+</html>
