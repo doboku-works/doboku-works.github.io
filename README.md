@@ -3,6 +3,7 @@
 **minamo｜土木×IT** が運営する、土木工学・施工計画・構造力学 FEM と WebGL（Three.js）を組み合わせた個人技術検証・デジタルアート公開用の完全静的サイト（GitHub Pages）です。
 
 - **公開サイト**: https://doboku-works.github.io/
+- **X (Twitter)**: https://x.com/doboku_works
 - **note（技術記事・制作裏話）**: https://note.com/doboku_works
 - 掲載しているすべての 3D モデル・地形・構造物諸元・力学データは、技術検証および個人公開のために独自設計した**完全架空のオリジナルモデル**です。
 
