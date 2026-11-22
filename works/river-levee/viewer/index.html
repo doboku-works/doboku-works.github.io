@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>RIVER LEVEE LAB — 河川堤防 4大決壊メカニズム ＆ 対策工 3D/4D シミュレーション</title>
+  <link rel="icon" type="image/png" href="../../../assets/brand/favicon.png" />
+  <link rel="stylesheet" href="./style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../../libs/three/build/three.module.js",
+        "three/addons/": "../../../libs/three/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- 3D ビューポート -->
+  <div id="viewport">
+    <canvas id="webgl-canvas"></canvas>
+    <div id="labels-layer" aria-hidden="true"></div>
+  </div>
+
+  <!-- ローディング画面 -->
+  <div id="loading-overlay" role="status" aria-live="polite">
+    <div class="loading-card">
+      <div class="loading-spinner"></div>
+      <div class="loading-badge">RIVER LEVEE LAB</div>
+      <h1 class="loading-title">河川堤防 4大決壊メカニズム 3D/4D シミュレーター</h1>
+      <p id="loading-status" class="loading-status">3D ジオラマモデルと水理・地盤解析データを読み込んでいます…</p>
+      <div class="loading-bar-track">
+        <div id="loading-bar-fill" class="loading-bar-fill"></div>
+      </div>
+      <button id="btn-retry-load" class="retry-btn hidden" type="button">再読み込み</button>
+    </div>
+  </div>
+
+  <!-- UI オーバーレイ全体 -->
+  <div id="ui-root">
+    <!-- トップバー -->
+    <header id="topbar">
+      <div class="brand-area">
+        <a href="../../../index.html" style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:6px;background:rgba(56,189,248,0.16);border:1px solid rgba(56,189,248,0.48);color:#e0f2fe;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;" title="ポートフォリオ一覧へ戻る">← 一覧へ</a>
+        <button id="btn-toggle-left" class="icon-btn" type="button" title="左パネルを開閉" aria-label="左パネルを開閉">
+          <span class="icon-hamburger"></span>
+        </button>
+        <div class="brand-badge">
+          <span class="brand-badge-full">RIVER LEVEE LAB</span>
+          <span class="brand-badge-short">RIVER LEVEE</span>
+        </div>
+        <div class="brand-titles">
+          <div class="brand-main">河川堤防 4大決壊メカニズム ＆ 対策工 3D/4D シミュレーション</div>
+          <div class="brand-sub" id="project-subtitle">新瑞穂川（架空モデル）｜国交省「手引き」参考 2D浸透流・円弧すべり・盤ぶくれ簡易解析デモ</div>
+        </div>
+      </div>
+
+      <nav class="camera-presets" id="camera-presets" aria-label="カメラ視点プリセット">
+        <button class="preset-btn active" data-preset="overview_cutaway" type="button">断面カット鳥瞰</button>
+        <button class="preset-btn" data-preset="section_front" type="button">堤防正面断面</button>
+        <button class="preset-btn" data-preset="landside_boil" type="button">裏法尻・噴砂アップ</button>
+        <button class="preset-btn" data-preset="riverside_scour" type="button">川表・護岸洗掘</button>
+        <button class="preset-btn" data-preset="inland_town" type="button">住宅地・浸水視点</button>
+        <button class="preset-btn" data-preset="aerial" type="button">全体俯瞰</button>
+      </nav>
+
+      <div class="topbar-actions">
+        <button id="btn-quick-mitigate" class="action-btn mobile-quick-mitigate" type="button" aria-pressed="false" title="対策工 ON/OFF クイック切替">
+          <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span id="quick-mitigate-label">対策 OFF</span>
+        </button>
+        <button id="btn-auto-demo" class="action-btn desktop-only-action" type="button" title="4大決壊モードと対策工効果を自動で順番に実演">
+          <span class="dot-indicator"></span>自動デモ
+        </button>
+        <button id="btn-save-png" class="action-btn desktop-only-action" type="button" title="現在の3D画面をPNG画像として保存">PNG保存</button>
+        <button id="btn-toggle-hud" class="action-btn" type="button" title="工学モニターHUDの表示切替">HUD</button>
+      </div>
+    </header>
+
+    <!-- 左パネル（モード選択・対策工トグル・表示アシスト・メカニズム解説） -->
+    <aside id="left-panel" aria-label="シミュレーション制御パネル">
+      <!-- ① 4大決壊モード選択 -->
+      <section class="panel-section">
+        <div class="section-header">
+          <span class="section-step">01</span>
+          <h2 class="section-title">4大決壊モード選択</h2>
+        </div>
+        <div id="mode-list" class="mode-grid">
+          <button class="mode-card active" data-mode="overtop" type="button">
+            <div class="mode-card-top">
+              <span class="mode-num">①</span>
+              <span class="mode-name">越水決壊</span>
+              <span class="mode-tag tag-overtop">最多 7〜8割</span>
+            </div>
+            <div class="mode-sub">天端越流 → 裏法尻洗掘・逆行破堤</div>
+          </button>
+
+          <button class="mode-card" data-mode="seepage" type="button">
+            <div class="mode-card-top">
+              <span class="mode-num">②</span>
+              <span class="mode-name">浸透・すべり</span>
+              <span class="mode-tag tag-seepage">Fs 低下</span>
+            </div>
+            <div class="mode-sub">浸潤面上昇 → 裏法面の円弧すべり</div>
+          </button>
+
+          <button class="mode-card" data-mode="piping" type="button">
+            <div class="mode-card-top">
+              <span class="mode-num">③</span>
+              <span class="mode-name">パイピング噴砂</span>
+              <span class="mode-tag tag-piping">基礎水圧</span>
+            </div>
+            <div class="mode-sub">砂礫層水圧集中 → 噴砂・空洞陥没</div>
+          </button>
+
+          <button class="mode-card" data-mode="erosion" type="button">
+            <div class="mode-card-top">
+              <span class="mode-num">④</span>
+              <span class="mode-name">河床洗掘・侵食</span>
+              <span class="mode-tag tag-erosion">高速濁流</span>
+            </div>
+            <div class="mode-sub">川底・表法尻洗掘 → 段階崩落破堤</div>
+          </button>
+        </div>
+      </section>
+
+      <!-- ② 超目立つ「対策工 ON / OFF」トグルカード -->
+      <section class="panel-section">
+        <div class="section-header">
+          <span class="section-step">02</span>
+          <h2 class="section-title">河川堤防 対策工（ワンクリック比較）</h2>
+        </div>
+        <div id="mitigation-card" class="mitigation-card is-off" role="button" tabindex="0" aria-pressed="false">
+          <div class="mitigation-row">
+            <div class="mitigation-title-wrap">
+              <span class="shield-icon" aria-hidden="true">
+                <svg class="shield-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path class="shield-check" d="M9 12l2 2 4-4"/>
+                </svg>
+              </span>
+              <div>
+                <div class="mitigation-label">対策工</div>
+                <div id="mitigation-state-text" class="mitigation-state-text">OFF（無対策・危険）</div>
+              </div>
+            </div>
+            <div class="toggle-switch" aria-hidden="true">
+              <span class="toggle-track">
+                <span class="toggle-text-on">ON</span>
+                <span class="toggle-text-off">OFF</span>
+                <span class="toggle-knob"></span>
+              </span>
+            </div>
+          </div>
+          <div id="mitigation-measure-name" class="mitigation-measure-name">
+            粘り強い堤防（天端・裏法ブロック被覆＋法尻保護工）
+          </div>
+          <div id="mitigation-effect-badge" class="mitigation-effect-badge">
+            クリックで対策工を設置し、安全率と破壊抑制効果を比較
+          </div>
+        </div>
+      </section>
+
+      <!-- ③ 表示アシスト切替 -->
+      <section class="panel-section">
+        <div class="section-header">
+          <span class="section-step">03</span>
+          <h2 class="section-title">可視化アシスト</h2>
+        </div>
+        <div class="assist-grid">
+          <button id="toggle-seepage-vis" class="assist-chip active" type="button" aria-pressed="true">
+            <span class="chip-dot"></span>断面浸透流・流線
+          </button>
+          <button id="toggle-labels" class="assist-chip active" type="button" aria-pressed="true">
+            <span class="chip-dot"></span>3D ピンラベル
+          </button>
+          <button id="toggle-weather" class="assist-chip active" type="button" aria-pressed="true">
+            <span class="chip-dot"></span>曇天洪水ライティング
+          </button>
+          <button id="toggle-highlight-measure" class="assist-chip" type="button" aria-pressed="false">
+            <span class="chip-dot"></span>対策工ハイライト
+          </button>
+        </div>
+      </section>
+
+      <!-- ④ 決壊メカニズム 3行ポイント解説 -->
+      <section class="panel-section mechanism-section">
+        <div class="section-header">
+          <span class="section-step">04</span>
+          <h2 class="section-title" id="mechanism-title">決壊メカニズム解説</h2>
+        </div>
+        <div class="mechanism-share-note" id="mechanism-share-note">堤防決壊要因の約7〜8割（最多）</div>
+        <ul id="mechanism-list" class="mechanism-list">
+          <li>読み込み中…</li>
+        </ul>
+      </section>
+    </aside>
+
+    <!-- 右上パネル（工学照査モニター HUD） -->
+    <aside id="hud-panel" aria-label="工学照査モニター">
+      <div class="hud-header">
+        <div class="hud-header-top">
+          <h2 class="hud-title">工学照査モニター</h2>
+          <span class="hud-kicker">ENGINEERING MONITOR</span>
+        </div>
+        <div id="status-badge" class="status-badge status-safe">安全・照査 OK</div>
+      </div>
+
+      <!-- 4指標 KPI カード -->
+      <div class="kpi-grid">
+        <div class="kpi-card" id="kpi-water-card">
+          <div class="kpi-label">河川水位 <span class="kpi-ref">H.W.L. 4.0m</span></div>
+          <div class="kpi-value-row">
+            <span id="kpi-water-val" class="kpi-value">-1.20</span>
+            <span class="kpi-unit">m</span>
+          </div>
+          <div id="kpi-water-sub" class="kpi-sub">天端 +5.0m まで余裕 6.20m</div>
+        </div>
+
+        <div class="kpi-card" id="kpi-fs-card">
+          <div class="kpi-label">すべり安全率 Fs <span class="kpi-ref">基準 ≥ 1.20</span></div>
+          <div class="kpi-value-row">
+            <span id="kpi-fs-val" class="kpi-value">1.85</span>
+            <span class="kpi-unit"></span>
+          </div>
+          <div id="kpi-fs-sub" class="kpi-sub">裏法面 安定</div>
+        </div>
+
+        <div class="kpi-card" id="kpi-grad-card">
+          <div class="kpi-label">鉛直動水勾配 iv <span class="kpi-ref">G/W &gt; 1.0</span></div>
+          <div class="kpi-value-row">
+            <span id="kpi-grad-val" class="kpi-value">0.08</span>
+            <span class="kpi-unit"></span>
+          </div>
+          <div id="kpi-grad-sub" class="kpi-sub">揚圧力比 G/W: 3.20</div>
+        </div>
+
+        <div class="kpi-card" id="kpi-damage-card">
+          <div class="kpi-label" id="kpi-damage-label">洗掘深 / 浸水深 <span class="kpi-ref">堤内地</span></div>
+          <div class="kpi-value-row">
+            <span id="kpi-damage-val" class="kpi-value">0.00</span>
+            <span class="kpi-unit" id="kpi-damage-unit">m</span>
+          </div>
+          <div id="kpi-damage-sub" class="kpi-sub">越水 0.00m ｜ 浸水 0.00m</div>
+        </div>
+      </div>
+
+      <!-- 高DPI 2段リアルタイムチャート -->
+      <div class="chart-wrap">
+        <canvas id="hud-chart" aria-label="水位ハイドログラフと照査指標の時系列推移"></canvas>
+      </div>
+
+      <!-- 地層＆間隙水圧凡例バー -->
+      <div class="layer-legend">
+        <span class="legend-item"><i class="swatch swatch-levee"></i>盛土堤体</span>
+        <span class="legend-item"><i class="swatch swatch-clay"></i>粘性土層</span>
+        <span class="legend-item"><i class="swatch swatch-gravel"></i>透水砂礫層</span>
+        <span class="legend-item"><i class="swatch swatch-base"></i>不透水基盤</span>
+        <span class="legend-item"><i class="swatch swatch-phreatic"></i>浸潤面</span>
+      </div>
+      <div id="pressure-legend" class="pressure-legend hidden">
+        <span class="pressure-legend-title">間隙水圧</span>
+        <span class="pressure-legend-min">低</span>
+        <span class="pressure-legend-bar" aria-hidden="true"></span>
+        <span class="pressure-legend-max">高</span>
+      </div>
+    </aside>
+
+    <!-- 下部タイムラインバー -->
+    <footer id="timeline-bar" aria-label="洪水進行タイムライン">
+      <div class="timeline-top">
+        <div class="stage-indicator" id="stage-indicator"></div>
+        <div class="stage-meta">
+          <span id="stage-mode-badge" class="stage-mode-badge">① 越水決壊｜無対策</span>
+          <span id="stage-desc" class="stage-desc">平常水位。堤体・基礎地盤ともに安定した状態です。</span>
+        </div>
+      </div>
+
+      <div class="timeline-controls">
+        <div class="playback-btns">
+          <button id="btn-reset" class="ctrl-btn" type="button" title="0時間へ戻す" aria-label="0時間へ戻す">⏮</button>
+          <button id="btn-play" class="ctrl-btn ctrl-play" type="button" title="再生 / 一時停止" aria-label="再生または一時停止">
+            <span id="play-icon">⏸</span>
+          </button>
+          <button id="btn-speed" class="ctrl-btn ctrl-speed" type="button" title="再生速度切替">1.0×</button>
+        </div>
+
+        <div class="slider-area">
+          <div class="slider-track-wrap">
+            <input id="time-slider" type="range" min="0" max="1000" value="0" step="1" aria-label="洪水経過時間スライダー" />
+            <div class="slider-ticks" aria-hidden="true">
+              <span>0h</span>
+              <span>6h</span>
+              <span>12h</span>
+              <span>18h</span>
+              <span>24h</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="time-readout">
+          <span class="time-label">経過時間</span>
+          <span id="time-value" class="time-value">00.0</span>
+          <span class="time-unit">/ 24.0 h</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- トースト通知 -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
