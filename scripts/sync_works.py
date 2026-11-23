@@ -28,7 +28,6 @@ WORKS = [
         "output_files": [],
         "thumb_src": PROJECTS_ROOT / "l-retaining-wall-3d" / "output" / "previews" / "thumb_standard_iso.png",
         "thumb_out": "retaining_wall.jpg",
-        "theme": "light",
     },
     {
         "slug": "river-levee",
