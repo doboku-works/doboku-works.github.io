@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DOBOKU WORKS by minamo｜土木×IT — 3D/4D シミュレーション ＆ インフラ可視化デモ</title>
-  <meta name="description" content="minamo｜土木×IT による土木 3D/4D シミュレーション＆構造力学FEMの個人技術デモアーカイブ。砂防堰堤・少数鈑桁送り出し架設・都市地下解剖キューブをブラウザで直接操作可能。制作解説は note で発信中。" />
+  <meta name="description" content="minamo｜土木×IT による土木 3D/4D シミュレーション＆構造力学の個人技術デモアーカイブ。L型擁壁リアルタイム安定計算・河川堤防4大決壊・少数鈑桁送り出し架設・都市地下解剖キューブ・砂防堰堤をブラウザで直接操作可能。制作解説は note で発信中。" />
   <meta property="og:title" content="DOBOKU WORKS by minamo｜土木×IT — 土木 3D/4D ＆ インフラ可視化デモ" />
   <meta property="og:description" content="ブラウザを開くだけで誰でも操作できる土木施工4Dシミュレーション＆力学可視化Webビューア集（minamo｜土木×IT）。" />
   <meta property="og:type" content="website" />
@@ -66,7 +66,7 @@
           <div class="hero-pill">⚡ 全作品 ブラウザで直接グルグル操作可能（インストール不要・WebGL）</div>
           <h1>土木の構造と施工を、<br><span class="grad-text">動く 3D / 4D と力学</span>で可視化する。</h1>
           <p class="hero-lead">
-            河川堤防の4大決壊メカニズム（2D浸透流・円弧すべり・パイピング噴砂・洗掘）、都市地下34mの5層インフラ解剖ジオラマ、合理化少数鈑桁橋の合成床版一体送り出し＆1D連続梁FEMたわみ、砂防堰堤の打設割・段階水替えまで。
+            L型擁壁の0msリアルタイム安定計算＆主鉄筋透視、河川堤防の4大決壊メカニズム（2D浸透流・円弧すべり・パイピング噴砂・洗掘）、都市地下34mの5層インフラ解剖ジオラマ、合理化少数鈑桁橋の合成床版一体送り出し＆1D連続梁FEMたわみ、砂防堰堤の打設割・段階水替えまで。
             「現場の施工・構造イメージ」と「コード駆動のインタラクティブWeb 3D」を掛け合わせた可視化デモ＆インフラアートを、<strong>minamo（土木×IT）</strong>の個人技術検証として公開しています。
           </p>
           <div class="hero-actions">
@@ -77,12 +77,12 @@
           </div>
         <div class="hero-stats">
           <div class="stat">
-            <span class="stat-val">4 Demos</span>
+            <span class="stat-val">5 Demos</span>
             <span class="stat-label">WebGL 実機体験可能</span>
           </div>
           <div class="stat">
-            <span class="stat-val">FEM + 4D</span>
-            <span class="stat-label">浸透流・力学・工程連動</span>
+            <span class="stat-val">0ms計算 + 4D</span>
+            <span class="stat-label">安定照査・FEM・工程連動</span>
           </div>
           <div class="stat">
             <span class="stat-val">ブラウザ完結</span>
@@ -102,7 +102,8 @@
             <h2>ブラウザで触れる 3D / 4D 技術デモ・作品</h2>
           </div>
           <div class="filter-tabs" id="filter-tabs">
-            <button class="ftab active" data-filter="all">すべて (4)</button>
+            <button class="ftab active" data-filter="all">すべて (5)</button>
+            <button class="ftab" data-filter="geotech">地盤・擁壁</button>
             <button class="ftab" data-filter="river">河川・防災</button>
             <button class="ftab" data-filter="art">土木アート</button>
             <button class="ftab" data-filter="bridge">橋梁・力学FEM</button>
@@ -111,11 +112,36 @@
         </div>
 
         <div class="works-grid">
-          <!-- Work 0 (NEW): River Levee Failure Lab -->
+          <!-- Work 0 (NEW): Retaining Wall Lab -->
+          <article class="work-card" data-cat="geotech">
+            <a href="./works/retaining-wall/viewer/index.html" class="card-thumb-link">
+              <img src="./assets/thumbs/retaining_wall.jpg" alt="RETAINING WALL LAB L型擁壁 リアルタイム3D安定計算シミュレーター" loading="lazy" />
+              <span class="thumb-badge geotech">NEW / 0msリアルタイム安定計算</span>
+              <span class="thumb-play">▶ 3Dビューアを起動</span>
+            </a>
+            <div class="card-body">
+              <div class="tags">
+                <span>滑動・転倒・支持力</span><span>水抜き孔詰まり</span><span>地震・底面突起</span><span>主鉄筋3D透視</span>
+              </div>
+              <h3>RETAINING WALL LAB — L型擁壁 リアルタイム 3D 安定計算</h3>
+              <p>
+                道路土工・擁壁工指針の基本考え方を参考に、壁高・底版幅・地下水位・水平震度・底面突起（せん断キー）を変えるとブラウザ内で0ms計算し、3D擁壁・土圧プリズム・安全率・2D断面力学図・計算途中式まで即連動する学習用シミュレーター。
+              </p>
+              <ul class="feat-list">
+                <li>水抜き孔詰まり・地震時（物部・岡部式）・底面突起ON回復・転倒・軟弱地盤の5シナリオをワンクリック比較</li>
+                <li>なぜ「背面側」に引張主鉄筋が入るかが直感的にわかる主鉄筋カットアウェイ3D透視＆ライブ代入検算シート付</li>
+              </ul>
+              <div class="card-actions">
+                <a href="./works/retaining-wall/viewer/index.html" class="btn btn-primary btn-sm">🚀 ブラウザで3Dを操作する</a>
+              </div>
+            </div>
+          </article>
+
+          <!-- Work 1: River Levee Failure Lab -->
           <article class="work-card" data-cat="river">
             <a href="./works/river-levee/viewer/index.html" class="card-thumb-link">
               <img src="./assets/thumbs/river_levee.jpg" alt="RIVER LEVEE LAB 河川堤防 4大決壊メカニズム ＆ 対策工 3D/4D シミュレーション" loading="lazy" />
-              <span class="thumb-badge river">NEW / 2D浸透流 ＆ 防災4D</span>
+              <span class="thumb-badge river">2D浸透流 ＆ 防災4D</span>
               <span class="thumb-play">▶ 3Dビューアを起動</span>
             </a>
             <div class="card-body">

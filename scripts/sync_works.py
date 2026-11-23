@@ -1,4 +1,4 @@
-"""3つの土木3Dプロジェクトから GitHub Pages 静的配信用ファイル一式を自動同期・最適化ビルドするスクリプト."""
+"""複数の土木3Dプロジェクトから GitHub Pages 静的配信用ファイル一式を自動同期・最適化ビルドするスクリプト."""
 
 from __future__ import annotations
 
@@ -22,6 +22,14 @@ THREE_FILES = [
 ]
 
 WORKS = [
+    {
+        "slug": "retaining-wall",
+        "src_dir": PROJECTS_ROOT / "l-retaining-wall-3d",
+        "output_files": [],
+        "thumb_src": PROJECTS_ROOT / "l-retaining-wall-3d" / "output" / "previews" / "thumb_standard_iso.png",
+        "thumb_out": "retaining_wall.jpg",
+        "theme": "light",
+    },
     {
         "slug": "river-levee",
         "src_dir": PROJECTS_ROOT / "river-levee-failure-3d",
@@ -52,10 +60,18 @@ WORKS = [
     },
 ]
 
-BACK_BTN_HTML = (
+BACK_BTN_HTML_DARK = (
     '<a href="../../../index.html" '
     'style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:6px;'
     'background:rgba(56,189,248,0.16);border:1px solid rgba(56,189,248,0.48);color:#e0f2fe;'
+    'font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;" '
+    'title="ポートフォリオ一覧へ戻る">← 一覧へ</a>'
+)
+
+BACK_BTN_HTML_LIGHT = (
+    '<a href="../../../index.html" '
+    'style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:6px;'
+    'background:rgba(2,132,199,0.10);border:1px solid rgba(2,132,199,0.38);color:#0369a1;'
     'font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;" '
     'title="ポートフォリオ一覧へ戻る">← 一覧へ</a>'
 )
@@ -82,7 +98,6 @@ def sync_works() -> None:
         dst_viewer = dst_work / "viewer"
         dst_output = dst_work / "output"
         dst_viewer.mkdir(parents=True, exist_ok=True)
-        dst_output.mkdir(parents=True, exist_ok=True)
 
         # viewer/* コピー ＆ index.html の importmap を自己完結 libs/three へ書換＋一覧戻りリンク挿入
         for vf in (src_dir / "viewer").iterdir():
@@ -99,9 +114,10 @@ def sync_works() -> None:
                     count=1,
                 )
                 if 'href="../../../index.html"' not in html:
+                    btn_html = BACK_BTN_HTML_LIGHT if w.get("theme") == "light" else BACK_BTN_HTML_DARK
                     html = re.sub(
                         r'(<div\s+class="brand(?:-area)?"\s*>)',
-                        rf"\1\n        {BACK_BTN_HTML}",
+                        rf"\1\n        {btn_html}",
                         html,
                         count=1,
                     )
@@ -110,11 +126,13 @@ def sync_works() -> None:
                 shutil.copy2(vf, dst_viewer / vf.name)
 
         # output の軽量必須ファイルのみ同期
-        for fname in w["output_files"]:
-            sf = src_dir / "output" / fname
-            if not sf.exists():
-                raise FileNotFoundError(f"Missing required asset: {sf}")
-            shutil.copy2(sf, dst_output / fname)
+        if w["output_files"]:
+            dst_output.mkdir(parents=True, exist_ok=True)
+            for fname in w["output_files"]:
+                sf = src_dir / "output" / fname
+                if not sf.exists():
+                    raise FileNotFoundError(f"Missing required asset: {sf}")
+                shutil.copy2(sf, dst_output / fname)
 
         # サムネイル画像を 960x540 高品質JPEGへ最適化
         tsrc: Path = w["thumb_src"]
@@ -123,7 +141,7 @@ def sync_works() -> None:
             im = im.resize((960, 540), Image.Resampling.LANCZOS)
             im.save(thumbs_dir / w["thumb_out"], format="JPEG", quality=86, optimize=True)
         print(f"  - synced work: {slug}")
-    print("[2/3] 全3作品のビューア・GLB・サムネイル同期完了")
+    print(f"[2/3] 全{len(WORKS)}作品のビューア・GLB・サムネイル同期完了")
 
 
 def report_sizes() -> None:

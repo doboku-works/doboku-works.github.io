@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>RETAINING WALL LAB｜L型擁壁 リアルタイム3D安定計算シミュレーター</title>
+  <meta name="description" content="L型擁壁の滑動・転倒・支持力を0msリアルタイム計算＆3D可視化する学習用土木工学シミュレーター" />
+  <link rel="icon" type="image/png" href="../../../assets/brand/favicon.png" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "../../../libs/three/build/three.module.js",
+      "three/addons/": "../../../libs/three/examples/jsm/"
+    }
+  }
+  </script>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <!-- 全画面 3D ビューポート -->
+  <main id="viewport" aria-label="L型擁壁 3Dシミュレーションビューポート">
+    <canvas id="canvas3d"></canvas>
+    <div id="label-layer" aria-hidden="true"></div>
+  </main>
+
+  <!-- トップバー -->
+  <header id="topbar" role="banner">
+    <div class="topbar-row topbar-primary">
+      <div class="topbar-left">
+        <button id="btn-toggle-left" class="tb-btn tb-btn-panel" type="button" aria-expanded="true" aria-controls="panel-left" title="設計パラメータパネルを開閉">
+          <svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="3" y1="5" x2="17" y2="5" />
+            <circle cx="7" cy="5" r="1.8" fill="currentColor" />
+            <line x1="3" y1="10" x2="17" y2="10" />
+            <circle cx="13" cy="10" r="1.8" fill="currentColor" />
+            <line x1="3" y1="15" x2="17" y2="15" />
+            <circle cx="8" cy="15" r="1.8" fill="currentColor" />
+          </svg>
+          <span class="tb-btn-label">操作</span>
+        </button>
+
+        <div class="brand">
+        <a href="../../../index.html" style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:6px;background:rgba(2,132,199,0.10);border:1px solid rgba(2,132,199,0.38);color:#0369a1;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;" title="ポートフォリオ一覧へ戻る">← 一覧へ</a>
+          <span class="brand-icon" aria-hidden="true">
+            <svg viewBox="0 0 28 28" fill="none">
+              <rect width="28" height="28" rx="7" fill="#1e293b" />
+              <path d="M7 5.5h4.2l1.6 13.5H22v3.5H5.5v-3.5H7V5.5z" fill="#38bdf8" />
+              <path d="M14.5 9.5l7.5 8.5h-7.5V9.5z" fill="#fb923c" fill-opacity="0.88" />
+            </svg>
+          </span>
+          <div class="brand-text">
+            <span class="brand-title"><span class="brand-title-full">RETAINING WALL LAB</span><span class="brand-title-short">WALL LAB</span></span>
+            <span class="brand-sub">道路土工・擁壁工指針 参考｜L型擁壁 リアルタイム3D安定計算（学習用簡易モデル）</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- デスクトップ用カメラプリセット -->
+      <nav class="camera-bar camera-bar-desktop" aria-label="視点プリセット">
+        <button class="cam-btn is-active" type="button" data-cam="iso_cutaway">斜め透視</button>
+        <button class="cam-btn" type="button" data-cam="section_front">正面断面</button>
+        <button class="cam-btn" type="button" data-cam="back_drain">背面・排水</button>
+        <button class="cam-btn" type="button" data-cam="base_bearing">底面反力</button>
+        <button class="cam-btn" type="button" data-cam="top_overview">俯瞰</button>
+      </nav>
+
+      <div class="topbar-right">
+        <!-- モバイル用 総合ステータスバッジ -->
+        <button id="mobile-status-pill" class="mobile-status-pill is-ok" type="button" title="安定照査パネルを開く">
+          <span class="status-dot"></span>
+          <span id="mobile-status-text">OK 安定</span>
+        </button>
+
+        <button id="btn-export-png" class="tb-btn tb-btn-ghost tb-desktop-only" type="button" title="現在の3DビューをPNG画像として保存">
+          <svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 14.5v1.5a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 17 16v-1.5" />
+            <polyline points="6.5 9.5 10 13 13.5 9.5" />
+            <line x1="10" y1="3" x2="10" y2="12.5" />
+          </svg>
+          <span class="tb-btn-label">PNG保存</span>
+        </button>
+
+        <button id="btn-toggle-right" class="tb-btn tb-btn-panel" type="button" aria-expanded="true" aria-controls="panel-right" title="安定照査パネルを開閉">
+          <svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="14" height="14" rx="2" />
+            <path d="M6.5 12.5l2.3-2.5 2.1 1.7 2.8-3.7" />
+          </svg>
+          <span class="tb-btn-label">照査</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- モバイル用 2段目視点帯 -->
+    <nav class="topbar-row topbar-mobile-cams" aria-label="モバイル視点プリセット">
+      <div class="mobile-cam-scroll">
+        <button class="cam-btn is-active" type="button" data-cam="iso_cutaway">斜め透視</button>
+        <button class="cam-btn" type="button" data-cam="section_front">正面断面</button>
+        <button class="cam-btn" type="button" data-cam="back_drain">背面・排水</button>
+        <button class="cam-btn" type="button" data-cam="base_bearing">底面反力</button>
+        <button class="cam-btn" type="button" data-cam="top_overview">俯瞰</button>
+        <button id="btn-export-png-mobile" class="cam-btn cam-btn-export" type="button">PNG保存</button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- 左パネル：設計パラメータ操作盤 -->
+  <aside id="panel-left" class="side-panel panel-left" aria-label="設計パラメータ操作パネル">
+    <div class="panel-header panel-header-left">
+      <div class="panel-title-group">
+        <h2 class="panel-title">設計パラメータ</h2>
+        <span class="panel-subtitle">CONTROL DECK</span>
+      </div>
+      <div class="panel-header-actions">
+        <button id="btn-reset" class="mini-action-btn" type="button" title="すべてのパラメータを標準設計に初期化">
+          <svg class="ico-sm" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3.5 10a6.5 6.5 0 1 1 1.9 4.6" />
+            <polyline points="3.5 14.5 3.5 10.5 7.5 10.5" />
+          </svg>
+          <span>初期化</span>
+        </button>
+        <button id="btn-close-left" class="panel-close-btn" type="button" aria-label="操作パネルを閉じる" title="閉じる">
+          <svg class="ico-sm" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <line x1="5" y1="5" x2="15" y2="15" />
+            <line x1="15" y1="5" x2="5" y2="15" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel-body">
+      <!-- ① 学習シナリオ 5 プリセット -->
+      <section class="deck-section" aria-labelledby="sec-presets-title">
+        <div class="section-head">
+          <span class="section-ico section-ico-blue" aria-hidden="true">
+            <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="9 2 11.2 6.5 16 7.2 12.5 10.6 13.3 15.4 9 13.1 4.7 15.4 5.5 10.6 2 7.2 6.8 6.5 9 2" />
+            </svg>
+          </span>
+          <h3 id="sec-presets-title" class="section-title">学習シナリオ（ワンクリック切替）</h3>
+        </div>
+        <div id="preset-list" class="preset-list" role="group" aria-label="学習シナリオプリセット">
+          <!-- app.js が PRESETS から自動生成 -->
+        </div>
+      </section>
+
+      <!-- ② リアルタイムパラメータ（カテゴリ切替タブ） -->
+      <section class="deck-section" aria-labelledby="sec-params-title">
+        <div class="section-head">
+          <span class="section-ico section-ico-indigo" aria-hidden="true">
+            <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="2.5" y1="5" x2="15.5" y2="5" />
+              <circle cx="6.5" cy="5" r="1.7" fill="currentColor" />
+              <line x1="2.5" y1="13" x2="15.5" y2="13" />
+              <circle cx="11.5" cy="13" r="1.7" fill="currentColor" />
+            </svg>
+          </span>
+          <h3 id="sec-params-title" class="section-title">リアルタイム設計スライダー</h3>
+        </div>
+
+        <div class="seg-tabs seg-tabs-3" role="tablist" aria-label="パラメータカテゴリ">
+          <button id="ctrl-tab-geom" class="seg-tab is-active" type="button" role="tab" aria-selected="true" data-ctrl-tab="geom">断面寸法</button>
+          <button id="ctrl-tab-load" class="seg-tab" type="button" role="tab" aria-selected="false" data-ctrl-tab="load">水・地震・荷重</button>
+          <button id="ctrl-tab-soil" class="seg-tab" type="button" role="tab" aria-selected="false" data-ctrl-tab="soil">地盤定数</button>
+        </div>
+
+        <!-- タブA：断面寸法 -->
+        <div id="ctrl-pane-geom" class="ctrl-pane is-active" role="tabpanel" aria-labelledby="ctrl-tab-geom">
+          <div class="slider-group">
+            <div class="slider-item">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-H">擁壁全高 <span class="sym">H</span></label>
+                <span id="val-H" class="slider-value">4.00 m</span>
+              </div>
+              <input id="param-H" class="range-input" type="range" min="2.0" max="7.0" step="0.1" value="4.0" data-param="H" />
+            </div>
+
+            <div class="slider-item">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-B">底版全幅 <span class="sym">B</span></label>
+                <span id="val-B" class="slider-value">2.80 m</span>
+              </div>
+              <input id="param-B" class="range-input" type="range" min="1.4" max="5.5" step="0.05" value="2.8" data-param="B" />
+            </div>
+
+            <div class="slider-item">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-B_toe">つま先版長 <span class="sym">B<sub>toe</sub></span></label>
+                <span id="val-B_toe" class="slider-value">0.45 m</span>
+              </div>
+              <input id="param-B_toe" class="range-input" type="range" min="0.0" max="1.6" step="0.05" value="0.45" data-param="B_toe" />
+            </div>
+
+            <div class="slider-item">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-t_stem">たて壁基部厚 <span class="sym">t<sub>s</sub></span></label>
+                <span id="val-t_stem" class="slider-value">0.42 m</span>
+              </div>
+              <input id="param-t_stem" class="range-input" type="range" min="0.30" max="0.85" step="0.01" value="0.42" data-param="t_stem" />
+            </div>
+
+            <div class="slider-item">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-t_base">底版厚 <span class="sym">t<sub>b</sub></span></label>
+                <span id="val-t_base" class="slider-value">0.45 m</span>
+              </div>
+              <input id="param-t_base" class="range-input" type="range" min="0.30" max="0.85" step="0.01" value="0.45" data-param="t_base" />
+            </div>
+          </div>
+
+          <div class="derived-strip">
+            <span class="derived-chip">かかと版長 <strong id="val-B_heel" class="num">1.93 m</strong></span>
+            <span class="derived-chip">B / H 比 <strong id="val-BH_ratio" class="num">0.70</strong></span>
+          </div>
+
+          <label class="switch-card" for="param-hasKey">
+            <div class="switch-card-text">
+              <span class="switch-card-title">底面突起（せん断キー）</span>
+              <span class="switch-card-desc">底版下に突起を設け滑動抵抗を増強</span>
+            </div>
+            <span class="switch-control">
+              <input id="param-hasKey" type="checkbox" data-param="hasKey" />
+              <span class="switch-track"></span>
+            </span>
+          </label>
+        </div>
+
+        <!-- タブB：水・地震・荷重 -->
+        <div id="ctrl-pane-load" class="ctrl-pane" role="tabpanel" aria-labelledby="ctrl-tab-load">
+          <div class="slider-group">
+            <div class="slider-item slider-item-water">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-waterRatio">
+                  背面地下水位
+                  <span id="badge-water-state" class="inline-chip chip-ok">排水良好</span>
+                </label>
+                <span id="val-waterRatio" class="slider-value">0% (0.00m)</span>
+              </div>
+              <input id="param-waterRatio" class="range-input range-water" type="range" min="0" max="0.90" step="0.01" value="0" data-param="waterRatio" />
+              <div class="slider-hint">水抜き孔詰まりを再現（静水圧＋底面揚圧力が発生）</div>
+            </div>
+
+            <div class="slider-item slider-item-seismic">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-kh">
+                  地震水平震度 <span class="sym">k<sub>h</sub></span>
+                  <span id="badge-kh-state" class="inline-chip chip-muted">常時</span>
+                </label>
+                <span id="val-kh" class="slider-value">0.00</span>
+              </div>
+              <input id="param-kh" class="range-input range-seismic" type="range" min="0" max="0.25" step="0.01" value="0" data-param="kh" />
+              <div class="slider-hint">k<sub>h</sub> &gt; 0 で物部・岡部式土圧＋慣性力へ自動切替</div>
+            </div>
+
+            <div class="slider-item">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-qSurcharge">上載荷重 <span class="sym">q</span></label>
+                <span id="val-qSurcharge" class="slider-value">10 kN/m²</span>
+              </div>
+              <input id="param-qSurcharge" class="range-input" type="range" min="0" max="30" step="1" value="10" data-param="qSurcharge" />
+            </div>
+
+            <div class="slider-item">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-betaDeg">背面地表面勾配 <span class="sym">β</span></label>
+                <span id="val-betaDeg" class="slider-value">0°</span>
+              </div>
+              <input id="param-betaDeg" class="range-input" type="range" min="0" max="25" step="1" value="0" data-param="betaDeg" />
+            </div>
+          </div>
+        </div>
+
+        <!-- タブC：地盤定数 -->
+        <div id="ctrl-pane-soil" class="ctrl-pane" role="tabpanel" aria-labelledby="ctrl-tab-soil">
+          <div class="slider-group">
+            <div class="slider-item">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-phiDeg">内部摩擦角 <span class="sym">φ</span></label>
+                <span id="val-phiDeg" class="slider-value">30°</span>
+              </div>
+              <input id="param-phiDeg" class="range-input" type="range" min="20" max="40" step="1" value="30" data-param="phiDeg" />
+            </div>
+
+            <div class="slider-item">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-gammaSoil">土の単位体積重量 <span class="sym">γ</span></label>
+                <span id="val-gammaSoil" class="slider-value">18.0 kN/m³</span>
+              </div>
+              <input id="param-gammaSoil" class="range-input" type="range" min="16.0" max="21.0" step="0.5" value="18.0" data-param="gammaSoil" />
+            </div>
+
+            <div class="slider-item">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-muBase">底面摩擦係数 <span class="sym">μ</span></label>
+                <span id="val-muBase" class="slider-value">0.55</span>
+              </div>
+              <input id="param-muBase" class="range-input" type="range" min="0.35" max="0.70" step="0.01" value="0.55" data-param="muBase" />
+            </div>
+
+            <div class="slider-item">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-qa">許容支持力度（常時）<span class="sym">q<sub>a</sub></span></label>
+                <span id="val-qa" class="slider-value">250 kN/m²</span>
+              </div>
+              <input id="param-qa" class="range-input" type="range" min="80" max="450" step="10" value="250" data-param="qa" />
+              <div class="slider-hint">地震時は 1.5 倍（<span id="val-qa-seismic" class="num">375</span> kN/m²）で照査</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ③ 3D 表示オプション -->
+      <section class="deck-section" aria-labelledby="sec-display-title">
+        <div class="section-head">
+          <span class="section-ico section-ico-teal" aria-hidden="true">
+            <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1.5 9s2.8-5 7.5-5 7.5 5 7.5 5-2.8 5-7.5 5-7.5-5-7.5-5z" />
+              <circle cx="9" cy="9" r="2.2" />
+            </svg>
+          </span>
+          <h3 id="sec-display-title" class="section-title">3D 可視化レイヤー</h3>
+        </div>
+
+        <div class="toggle-grid">
+          <label class="toggle-pill" for="opt-showForces">
+            <input id="opt-showForces" type="checkbox" checked data-opt="showForces" />
+            <span class="toggle-pill-ui">
+              <span class="toggle-dot dot-orange"></span>
+              <span class="toggle-label">3D 力学分布</span>
+            </span>
+          </label>
+
+          <label class="toggle-pill" for="opt-showRebar">
+            <input id="opt-showRebar" type="checkbox" data-opt="showRebar" />
+            <span class="toggle-pill-ui">
+              <span class="toggle-dot dot-blue"></span>
+              <span class="toggle-label">主鉄筋透視</span>
+            </span>
+          </label>
+
+          <label class="toggle-pill" for="opt-showFailureAnim">
+            <input id="opt-showFailureAnim" type="checkbox" checked data-opt="showFailureAnim" />
+            <span class="toggle-pill-ui">
+              <span class="toggle-dot dot-red"></span>
+              <span class="toggle-label">破壊プレビュー</span>
+            </span>
+          </label>
+
+          <label class="toggle-pill" for="opt-showLabels">
+            <input id="opt-showLabels" type="checkbox" checked data-opt="showLabels" />
+            <span class="toggle-pill-ui">
+              <span class="toggle-dot dot-teal"></span>
+              <span class="toggle-label">3D ピンラベル</span>
+            </span>
+          </label>
+        </div>
+      </section>
+    </div>
+  </aside>
+
+  <!-- 右パネル：安定照査モニター ＆ リアルタイム検算シート -->
+  <aside id="panel-right" class="side-panel panel-right" aria-label="安定照査モニターパネル">
+    <!-- 固定高さ 2 段ヘッダー -->
+    <div class="monitor-header">
+      <div class="monitor-header-row1">
+        <div class="monitor-title-wrap">
+          <h2 class="monitor-title">安定照査モニター</h2>
+          <span class="monitor-subtitle">STABILITY MONITOR</span>
+        </div>
+        <div class="monitor-header-right">
+          <span id="mode-badge" class="mode-badge is-normal">常時</span>
+          <button id="btn-close-right" class="panel-close-btn" type="button" aria-label="照査パネルを閉じる" title="閉じる">
+            <svg class="ico-sm" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <line x1="5" y1="5" x2="15" y2="15" />
+              <line x1="15" y1="5" x2="5" y2="15" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2段目：全幅 総合判定バナー -->
+      <div id="overall-banner" class="overall-banner is-ok" role="status" aria-live="polite">
+        <span id="overall-icon" class="overall-icon" aria-hidden="true">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="10" cy="10" r="8" />
+            <polyline points="6.5 10.2 9 12.7 13.8 7.5" />
+          </svg>
+        </span>
+        <div class="overall-text">
+          <div id="overall-headline" class="overall-headline">全項目 OK（安定）</div>
+          <div id="overall-summary" class="overall-summary">滑動・転倒・支持力のすべてが許容基準を満たしています</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右パネル 2 タブ切替 -->
+    <div class="monitor-tabs" role="tablist" aria-label="照査表示モード">
+      <button id="mon-tab-overview" class="mon-tab is-active" type="button" role="tab" aria-selected="true" data-mon-tab="overview">
+        <svg class="ico-sm" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="2.5" width="14" height="13" rx="2" />
+          <line x1="5" y1="7" x2="13" y2="7" />
+          <line x1="5" y1="11" x2="10" y2="11" />
+        </svg>
+        <span>照査・断面図</span>
+      </button>
+      <button id="mon-tab-formulas" class="mon-tab" type="button" role="tab" aria-selected="false" data-mon-tab="formulas">
+        <svg class="ico-sm" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 3.5h10M4 9h6M4 14.5h8" />
+          <path d="M12 10.5l2.5 4M14.5 10.5L12 14.5" />
+        </svg>
+        <span>計算途中式</span>
+      </button>
+    </div>
+
+    <!-- 右パネルボディ -->
+    <div class="panel-body monitor-body">
+      <!-- タブ1：照査・断面図 -->
+      <div id="mon-pane-overview" class="mon-pane is-active" role="tabpanel" aria-labelledby="mon-tab-overview">
+        <!-- 3大照査カード -->
+        <div class="check-cards">
+          <!-- ① 滑動照査 -->
+          <article id="card-sliding" class="check-card is-ok">
+            <div class="check-card-top">
+              <div class="check-card-title">
+                <span class="check-num">1</span>
+                <span>滑動（すべり）</span>
+              </div>
+              <span id="badge-sliding" class="judge-badge is-ok">OK</span>
+            </div>
+            <div class="check-metric-row">
+              <div class="check-main-val">
+                <span class="metric-sym">F<sub>ss</sub></span>
+                <strong id="val-fss" class="metric-num">1.85</strong>
+              </div>
+              <div class="check-limit">基準 <span id="val-fss-limit" class="num">≥ 1.50</span></div>
+            </div>
+            <div class="gauge-wrap">
+              <div class="gauge-track">
+                <div id="bar-sliding" class="gauge-fill" style="width: 62%"></div>
+                <div id="mark-sliding" class="gauge-mark" style="left: 50%"></div>
+              </div>
+            </div>
+            <div id="sub-sliding" class="check-sub-row">抵抗 ΣR 132.4 kN ／ 水平力 ΣH 71.5 kN</div>
+            <div id="hint-sliding" class="check-hint-row" hidden></div>
+          </article>
+
+          <!-- ② 転倒照査 -->
+          <article id="card-overturning" class="check-card is-ok">
+            <div class="check-card-top">
+              <div class="check-card-title">
+                <span class="check-num">2</span>
+                <span>転倒（偏心・モーメント）</span>
+              </div>
+              <span id="badge-overturning" class="judge-badge is-ok">OK</span>
+            </div>
+            <div class="check-metric-row check-metric-split">
+              <div class="check-main-val">
+                <span class="metric-sym">|e|</span>
+                <strong id="val-e" class="metric-num">0.24 m</strong>
+                <span id="val-e-limit" class="metric-sub-lim">≤ B/6 (0.47m)</span>
+              </div>
+              <div class="check-secondary-val">
+                <span class="metric-sym">F<sub>so</sub></span>
+                <strong id="val-fso" class="metric-num-sm">2.65</strong>
+                <span id="val-fso-limit" class="metric-sub-lim">≥ 1.50</span>
+              </div>
+            </div>
+            <!-- ミドルサード可視化バー -->
+            <div class="ecc-bar-wrap" aria-label="底面合力作用位置の偏心ゲージ">
+              <div class="ecc-track">
+                <div id="ecc-kern-zone" class="ecc-kern" style="left: 33.3%; width: 33.3%"></div>
+                <div class="ecc-center-line"></div>
+                <div id="ecc-marker" class="ecc-marker" style="left: 42%"></div>
+              </div>
+              <div class="ecc-labels">
+                <span>つま先</span>
+                <span id="ecc-kern-label">核内 ±B/6</span>
+                <span>かかと</span>
+              </div>
+            </div>
+            <div id="sub-overturning" class="check-sub-row">作用位置 d = 1.16 m（底面中央よりつま先側）</div>
+          </article>
+
+          <!-- ③ 支持力照査 -->
+          <article id="card-bearing" class="check-card is-ok">
+            <div class="check-card-top">
+              <div class="check-card-title">
+                <span class="check-num">3</span>
+                <span>支持力（底面地盤反力）</span>
+              </div>
+              <span id="badge-bearing" class="judge-badge is-ok">OK</span>
+            </div>
+            <div class="check-metric-row">
+              <div class="check-main-val">
+                <span class="metric-sym">q<sub>max</sub></span>
+                <strong id="val-qmax" class="metric-num">128.4</strong>
+                <span class="metric-unit">kN/m²</span>
+              </div>
+              <div class="check-limit">許容 <span id="val-qa-allow" class="num">≤ 250</span> (F<sub>sb</sub>=<span id="val-fsb" class="num">1.95</span>)</div>
+            </div>
+            <div class="gauge-wrap">
+              <div class="gauge-track">
+                <div id="bar-bearing" class="gauge-fill" style="width: 51%"></div>
+                <div class="gauge-mark" style="left: 100%"></div>
+              </div>
+            </div>
+            <div id="sub-bearing" class="check-sub-row">つま先 q₁ 128.4 ／ かかと q₂ 36.2 kN/m²（全面接地）</div>
+          </article>
+        </div>
+
+        <!-- 2x 高DPI 2D 断面力学図 Canvas -->
+        <section class="diagram-card" aria-label="2D断面力学図">
+          <div class="diagram-head">
+            <h3 class="diagram-title">2D 断面力学図（単位幅 1m）</h3>
+            <div class="diagram-legend">
+              <span class="leg-item"><i class="leg-swatch sw-earth"></i>土圧</span>
+              <span class="leg-item"><i class="leg-swatch sw-water"></i>水圧</span>
+              <span class="leg-item"><i class="leg-swatch sw-bearing"></i>反力</span>
+              <span class="leg-item"><i class="leg-swatch sw-kern"></i>許容核</span>
+            </div>
+          </div>
+          <div class="diagram-canvas-wrap">
+            <canvas id="diagram2d"></canvas>
+          </div>
+        </section>
+
+        <!-- 誠実免責注記 -->
+        <div class="disclaimer-box">
+          <svg class="ico-sm disclaimer-ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="9" cy="9" r="7.5" />
+            <line x1="9" y1="8.2" x2="9" y2="12.5" />
+            <circle cx="9" cy="5.7" r="0.8" fill="currentColor" stroke="none" />
+          </svg>
+          <p>道路土工・擁壁工指針の考え方を参考にした、メカニズム理解・学習用の簡易計算シミュレーターです（実務設計では現地地盤調査および各種基準・構造細目に基づく詳細照査を行ってください）。</p>
+        </div>
+      </div>
+
+      <!-- タブ2：計算途中式 ＆ 検算テーブル -->
+      <div id="mon-pane-formulas" class="mon-pane" role="tabpanel" aria-labelledby="mon-tab-formulas">
+        <!-- 土圧係数・基本諸元 -->
+        <section class="formula-section">
+          <div class="formula-sec-head">
+            <h3 class="formula-sec-title">土圧係数・基本諸元</h3>
+            <span id="formula-theory-tag" class="theory-tag">クーロン主働土圧</span>
+          </div>
+          <div class="kv-grid">
+            <div class="kv-cell">
+              <span id="kv-ka-label" class="kv-k">主働土圧係数 K<sub>A</sub></span>
+              <strong id="kv-ka-val" class="kv-v">0.333</strong>
+            </div>
+            <div class="kv-cell">
+              <span class="kv-k">壁面摩擦角 δ ／ 合成角 θ<sub>e</sub></span>
+              <strong id="kv-angles-val" class="kv-v">0.0° ／ 0.0°</strong>
+            </div>
+            <div class="kv-cell">
+              <span class="kv-k">仮想背面高 H<sub>v</sub> ／ 水位 H<sub>w</sub></span>
+              <strong id="kv-heights-val" class="kv-v">4.00 m ／ 0.00 m</strong>
+            </div>
+            <div class="kv-cell">
+              <span class="kv-k">鉛直力 ΣV ／ 水平力 ΣH</span>
+              <strong id="kv-forces-val" class="kv-v">240.0 ／ 71.5 kN</strong>
+            </div>
+            <div class="kv-cell">
+              <span class="kv-k">抵抗 M<sub>r</sub> ／ 転倒 M<sub>t</sub></span>
+              <strong id="kv-moments-val" class="kv-v">390.0 ／ 110.0 kN·m</strong>
+            </div>
+            <div class="kv-cell">
+              <span class="kv-k">作用位置 d ／ 偏心距離 e</span>
+              <strong id="kv-ecc-val" class="kv-v">1.16 m ／ 0.24 m</strong>
+            </div>
+          </div>
+        </section>
+
+        <!-- ライブ代入計算式 -->
+        <section class="formula-section">
+          <div class="formula-sec-head">
+            <h3 class="formula-sec-title">3大外的安定 計算途中式</h3>
+          </div>
+          <div id="live-formulas" class="formula-cards">
+            <!-- app.js でリアルタイム生成 -->
+          </div>
+        </section>
+
+        <!-- 荷重・モーメント内訳表 -->
+        <section class="formula-section">
+          <div class="formula-sec-head">
+            <h3 class="formula-sec-title">荷重・モーメント一覧（つま先 O 基準）</h3>
+            <span class="formula-unit-note">幅1m｜kN・m</span>
+          </div>
+          <div class="table-wrap">
+            <table class="breakdown-table">
+              <thead>
+                <tr>
+                  <th class="col-item">荷重項目</th>
+                  <th class="col-num">V<span class="th-unit">kN</span></th>
+                  <th class="col-num">H<span class="th-unit">kN</span></th>
+                  <th class="col-num">腕長<span class="th-unit">m</span></th>
+                  <th class="col-num">M<span class="th-unit">kN·m</span></th>
+                </tr>
+              </thead>
+              <tbody id="breakdown-tbody">
+                <!-- app.js が result.breakdownRows から自動生成 -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="disclaimer-box">
+          <svg class="ico-sm disclaimer-ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="9" cy="9" r="7.5" />
+            <line x1="9" y1="8.2" x2="9" y2="12.5" />
+            <circle cx="9" cy="5.7" r="0.8" fill="currentColor" stroke="none" />
+          </svg>
+          <p>本計算シートは道路土工・擁壁工指針の考え方を参考にした学習・理解用の簡易モデルです。実務設計では現地地盤調査および各種基準・構造細目に基づく詳細照査を行ってください。</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
