@@ -14,11 +14,13 @@ scene.fog = new THREE.FogExp2(0xcce2f4, 0.0014);
 const camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.5, 1200);
 camera.position.set(112, 54, 118);
 
+const isMobileViewport = () => window.innerWidth <= 768;
+
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
 renderer.setSize(container.clientWidth, container.clientHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 container.appendChild(renderer.domElement);
@@ -41,7 +43,8 @@ scene.add(new THREE.HemisphereLight(0xdff0ff, 0x6b7c5c, 0.92));
 const sunLight = new THREE.DirectionalLight(0xfff9ee, 1.98);
 sunLight.position.set(85, 120, 95);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.set(4096, 4096);
+const shadowRes = isMobileViewport() || (window.devicePixelRatio || 1) <= 1 ? 2048 : 4096;
+sunLight.shadow.mapSize.set(shadowRes, shadowRes);
 sunLight.shadow.camera.left = -165;
 sunLight.shadow.camera.right = 165;
 sunLight.shadow.camera.top = 120;
@@ -174,48 +177,126 @@ function interpDeflectionMeters(mech, sNorm) {
   return ((wArr[i0] + (wArr[i1] - wArr[i0]) * t) * 0.001) * state.deflScale;
 }
 
-// ---- BMD & たわみ曲線 Canvas ライブ描画 ----
+// ---- BMD & たわみ曲線 Canvas ライブ描画（DPR対応・支点位置＆境界表示） ----
 const bmdCanvas = document.getElementById('bmd-canvas');
 const bmdCtx = bmdCanvas.getContext('2d');
+let lastBmdArgs = { mech: null, statusText: '' };
 
-function drawBmdCanvas(mech) {
-  const W = bmdCanvas.width;
-  const H = bmdCanvas.height;
-  bmdCtx.clearRect(0, 0, W, H);
+function drawBmdCanvas(mech, statusText = '') {
+  lastBmdArgs = { mech, statusText };
+  const cssW = Math.max(180, Math.round(bmdCanvas.clientWidth || 304));
+  const cssH = Math.max(76, Math.round(bmdCanvas.clientHeight || 94));
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const targetW = Math.round(cssW * dpr);
+  const targetH = Math.round(cssH * dpr);
+  if (bmdCanvas.width !== targetW || bmdCanvas.height !== targetH) {
+    bmdCanvas.width = targetW;
+    bmdCanvas.height = targetH;
+  }
+
+  bmdCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  bmdCtx.clearRect(0, 0, cssW, cssH);
   bmdCtx.fillStyle = '#0f172a';
-  bmdCtx.fillRect(0, 0, W, H);
+  bmdCtx.fillRect(0, 0, cssW, cssH);
 
-  const midY = H * 0.48;
+  const padL = 8;
+  const padR = 8;
+  const plotW = cssW - padL - padR;
+  const topY = 12;
+  const botY = cssH - 13;
+  const midY = (topY + botY) * 0.5;
+
+  // 基準線（ゼロライン）
   bmdCtx.strokeStyle = 'rgba(148,163,184,0.35)';
   bmdCtx.lineWidth = 1;
   bmdCtx.beginPath();
-  bmdCtx.moveTo(8, midY);
-  bmdCtx.lineTo(W - 8, midY);
+  bmdCtx.moveTo(padL, midY);
+  bmdCtx.lineTo(cssW - padR, midY);
   bmdCtx.stroke();
 
-  if (!mech || !mech.w_mm) return;
-  const n = mech.w_mm.length;
-  const L_nose = state.meta.launching_nose.length_m;
-  const L_tot = mech.girder_len + L_nose;
-  const noseX = 8 + (mech.girder_len / Math.max(L_tot, 1)) * (W - 16);
+  if (!mech || !mech.w_mm) {
+    if (statusText) {
+      bmdCtx.fillStyle = 'rgba(148, 163, 184, 0.78)';
+      bmdCtx.font = '10px "Segoe UI", "Meiryo", sans-serif';
+      bmdCtx.textAlign = 'center';
+      bmdCtx.textBaseline = 'middle';
+      bmdCtx.fillText(statusText, cssW * 0.5, midY - 10);
+    }
+    return;
+  }
 
-  // 主桁 / 手延べ機境界線
-  bmdCtx.strokeStyle = 'rgba(234, 88, 12, 0.55)';
+  const n = mech.w_mm.length;
+  const L_nose = state.meta?.launching_nose?.length_m ?? 34.0;
+  const L_tot = Math.max(mech.girder_len + L_nose, 1.0);
+  const xRear = mech.x_front - mech.girder_len;
+  const xTip = mech.x_front + L_nose;
+
+  // 支点位置（A1, P1, P2, A2）の縦線・ラベル
+  const supports = state.meta?.bridge?.supports_x || { A1: 0, P1: 42, P2: 94, A2: 136 };
+  bmdCtx.font = '9px "Segoe UI", "Meiryo", sans-serif';
+  bmdCtx.textAlign = 'center';
+  bmdCtx.textBaseline = 'bottom';
+  for (const [label, sxWorld] of Object.entries(supports)) {
+    if (sxWorld >= xRear - 0.5 && sxWorld <= xTip + 0.5) {
+      const frac = Math.max(0, Math.min(1, (sxWorld - xRear) / L_tot));
+      const sx = padL + frac * plotW;
+      bmdCtx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+      bmdCtx.lineWidth = 1;
+      bmdCtx.setLineDash([2, 2]);
+      bmdCtx.beginPath();
+      bmdCtx.moveTo(sx, topY);
+      bmdCtx.lineTo(sx, botY);
+      bmdCtx.stroke();
+      bmdCtx.setLineDash([]);
+
+      // 支点三角マーク
+      bmdCtx.fillStyle = '#94a3b8';
+      bmdCtx.beginPath();
+      bmdCtx.moveTo(sx, midY + 1);
+      bmdCtx.lineTo(sx - 3, midY + 5);
+      bmdCtx.lineTo(sx + 3, midY + 5);
+      bmdCtx.closePath();
+      bmdCtx.fill();
+
+      // 支点名（はみ出し防止クランプ）
+      const tx = Math.max(padL + 8, Math.min(cssW - padR - 8, sx));
+      bmdCtx.fillStyle = '#cbd5e1';
+      bmdCtx.fillText(label, tx, cssH - 1);
+    }
+  }
+
+  // 主桁 / 手延べ機境界線＆ラベル
+  const noseX = padL + (mech.girder_len / L_tot) * plotW;
+  bmdCtx.strokeStyle = 'rgba(234, 88, 12, 0.72)';
+  bmdCtx.lineWidth = 1;
   bmdCtx.setLineDash([3, 3]);
   bmdCtx.beginPath();
-  bmdCtx.moveTo(noseX, 4);
-  bmdCtx.lineTo(noseX, H - 4);
+  bmdCtx.moveTo(noseX, topY);
+  bmdCtx.lineTo(noseX, botY);
   bmdCtx.stroke();
   bmdCtx.setLineDash([]);
 
-  // 曲げモーメント BMD（橙）
+  bmdCtx.font = '9px "Segoe UI", "Meiryo", sans-serif';
+  bmdCtx.textBaseline = 'top';
+  if (noseX - padL > 30) {
+    bmdCtx.fillStyle = 'rgba(186, 230, 253, 0.82)';
+    bmdCtx.textAlign = 'right';
+    bmdCtx.fillText('主桁', noseX - 4, 1);
+  }
+  if (cssW - padR - noseX > 32) {
+    bmdCtx.fillStyle = 'rgba(253, 186, 116, 0.9)';
+    bmdCtx.textAlign = 'left';
+    bmdCtx.fillText('手延べ機', noseX + 4, 1);
+  }
+
+  // 曲げモーメント BMD（橙・負曲げを上側、正曲げを下側）
+  const plotHalfH = (botY - topY) * 0.46;
   bmdCtx.strokeStyle = '#f59e0b';
   bmdCtx.lineWidth = 1.6;
   bmdCtx.beginPath();
   for (let i = 0; i < n; i++) {
-    const px = 8 + (i / (n - 1)) * (W - 16);
-    // 負曲げを上側、正曲げを下側（構造力学慣習）
-    const py = midY + (mech.M_knm[i] / 14000.0) * (H * 0.40);
+    const px = padL + (i / (n - 1)) * plotW;
+    const py = midY + (mech.M_knm[i] / 14000.0) * plotHalfH;
     if (i === 0) bmdCtx.moveTo(px, py);
     else bmdCtx.lineTo(px, py);
   }
@@ -226,28 +307,39 @@ function drawBmdCanvas(mech) {
   bmdCtx.lineWidth = 2.0;
   bmdCtx.beginPath();
   for (let i = 0; i < n; i++) {
-    const px = 8 + (i / (n - 1)) * (W - 16);
-    const py = midY - (mech.w_mm[i] / 850.0) * (H * 0.44);
+    const px = padL + (i / (n - 1)) * plotW;
+    const py = midY - (mech.w_mm[i] / 850.0) * plotHalfH;
     if (i === 0) bmdCtx.moveTo(px, py);
     else bmdCtx.lineTo(px, py);
   }
   bmdCtx.stroke();
 }
 
+function setStatusBadge(text, cls) {
+  const badge = document.getElementById('mech-status-badge');
+  badge.textContent = text;
+  badge.className = cls;
+}
+
 function updateMechanicsHUD(mech, noseVisible, isCompleted, isJackdown = false, jackRemainM = 0.0, deckPourCount = -1) {
   const allow = state.meta?.mechanics?.allowable_patch_load_kn ?? 1850;
+  const patchEl = document.getElementById('m-patch');
+
   if (!mech || isCompleted || deckPourCount >= 0) {
     const isDeckPhase = deckPourCount >= 0 && !isCompleted;
     document.getElementById('m-xfront').textContent = isCompleted || isDeckPhase ? '136.0 m' : '---';
     document.getElementById('m-xtip').textContent = isCompleted || isDeckPhase ? '解体済' : '---';
     document.getElementById('m-defl').textContent = isDeckPhase ? `打設 ${deckPourCount}/8` : '0.0 mm';
-    document.getElementById('m-patch').textContent = isCompleted ? '合成床版済' : isDeckPhase ? '配筋・打設' : '0.0 %';
+    patchEl.textContent = isCompleted ? '合成床版済' : isDeckPhase ? '配筋・打設' : '0.0 %';
+    patchEl.className = 'v ok';
     document.getElementById('m-negm').textContent = isCompleted ? '完成供用中' : isDeckPhase ? '床版コンクリート打設中' : '待機中';
+    setStatusBadge(isCompleted ? '完成供用' : isDeckPhase ? '床版打設中' : '待機中', 'badge-info');
+
     ['A1', 'P1', 'P2', 'A2'].forEach((k) => {
-      document.getElementById(`bar-${k}`).style.width = isCompleted || isDeckPhase ? '55%' : '0%';
+      document.getElementById(`bar-${k}`).style.width = '0%';
       document.getElementById(`val-${k}`).textContent = isCompleted || isDeckPhase ? '着座済' : '0 kN';
     });
-    drawBmdCanvas(null);
+    drawBmdCanvas(null, isCompleted ? '着座完了・完成供用中' : isDeckPhase ? '本設支承へ着座済・合成床版施工中' : '送り出し開始でBMD・たわみを表示');
     return;
   }
 
@@ -255,10 +347,23 @@ function updateMechanicsHUD(mech, noseVisible, isCompleted, isJackdown = false, 
   document.getElementById('m-xtip').textContent = noseVisible ? `${mech.x_tip.toFixed(1)} m` : '解体済';
   if (isJackdown) {
     document.getElementById('m-defl').textContent = `残 ${jackRemainM.toFixed(2)} m`;
-    document.getElementById('m-patch').textContent = '降下中';
+    patchEl.textContent = '降下中';
+    patchEl.className = 'v';
+    setStatusBadge('降下中', 'badge-info');
   } else {
     document.getElementById('m-defl').textContent = `${mech.tip_deflection_mm.toFixed(0)} mm`;
-    document.getElementById('m-patch').textContent = `${mech.patch_ratio_pct.toFixed(1)} %`;
+    const ratio = mech.patch_ratio_pct;
+    patchEl.textContent = `${ratio.toFixed(1)} %`;
+    if (ratio > 100) {
+      patchEl.className = 'v ng';
+      setStatusBadge('照査 NG', 'badge-ng');
+    } else if (ratio > 85) {
+      patchEl.className = 'v warn';
+      setStatusBadge('注意 (>85%)', 'badge-warn');
+    } else {
+      patchEl.className = 'v ok';
+      setStatusBadge('照査 OK', 'badge-ok');
+    }
   }
   document.getElementById('m-negm').textContent = `Max -M: ${Math.round(mech.max_neg_moment_knm).toLocaleString()} kN·m`;
 
@@ -419,35 +524,51 @@ function applySimulationAt(uRaw) {
   // 可動グループの位置更新
   state.movingGroup.position.set(xFront, ySoffit, 0);
 
-  // リアルタイム弾性たわみ変形（送り出しステージ中のみ滑らかに変形、降下・床版・完成後はゼロ）
+  // リアルタイム弾性たわみ変形（非表示ブロックや変化なしフレームの不要ループをスキップ）
   const applyDefl = activeMech !== null && !isCompleted && !isJackdown && !isDeckPourPhase;
   const gLenCur = applyDefl ? activeMech.girder_len : L_tot;
   const totCur = gLenCur + L_nose;
+  const activeDeflMaxBlk = Math.round(gLenCur / (L_tot / 12.0));
+  const mechKey = applyDefl
+    ? `${activeMech.x_front.toFixed(3)}|${gLenCur.toFixed(2)}|${state.deflScale.toFixed(2)}`
+    : 'none';
 
   for (const dt of state.deformTargets) {
-    const posAttr = dt.mesh.geometry.attributes.position;
-    const orig = dt.origPos;
-    const arr = posAttr.array;
-
     if (dt.kind === 'nose') {
+      if (!showNose) continue;
+      const useDefl = applyDefl && noseLiftY < 0.01;
+      const stateKey = useDefl ? `d:${mechKey}` : `r:${noseLiftY.toFixed(4)}`;
+      if (dt.lastStateKey === stateKey) continue;
+      dt.lastStateKey = stateKey;
+
+      const posAttr = dt.mesh.geometry.attributes.position;
+      const orig = dt.origPos;
+      const arr = posAttr.array;
       const extraY = noseLiftY;
       for (let i = 0; i < arr.length; i += 3) {
-        const lx = orig[i];
         let dy = extraY;
-        if (applyDefl && noseLiftY < 0.01) {
-          const sNorm = (lx + gLenCur) / Math.max(totCur, 1.0);
+        if (useDefl) {
+          const sNorm = (orig[i] + gLenCur) / Math.max(totCur, 1.0);
           dy += interpDeflectionMeters(activeMech, sNorm);
         }
         arr[i + 1] = orig[i + 1] + dy;
       }
       posAttr.needsUpdate = true;
     } else {
+      if (dt.blkIndex > visibleBlocks) continue;
       const dropY = dt.blkIndex === assemblingBlock ? assembleDropY : 0.0;
+      const useDefl = applyDefl && dropY < 0.01 && dt.blkIndex <= activeDeflMaxBlk;
+      const stateKey = useDefl ? `d:${mechKey}` : `r:${dropY.toFixed(4)}`;
+      if (dt.lastStateKey === stateKey) continue;
+      dt.lastStateKey = stateKey;
+
+      const posAttr = dt.mesh.geometry.attributes.position;
+      const orig = dt.origPos;
+      const arr = posAttr.array;
       for (let i = 0; i < arr.length; i += 3) {
-        const lx = orig[i];
         let dy = dropY;
-        if (applyDefl && dropY < 0.01 && dt.blkIndex <= Math.round(gLenCur / (L_tot / 12.0))) {
-          const sNorm = (lx + gLenCur) / Math.max(totCur, 1.0);
+        if (useDefl) {
+          const sNorm = (orig[i] + gLenCur) / Math.max(totCur, 1.0);
           dy += interpDeflectionMeters(activeMech, sNorm);
         }
         arr[i + 1] = orig[i + 1] + dy;
@@ -528,6 +649,7 @@ function applySimulationAt(uRaw) {
       item.el.textContent = isCompleted ? '供用中 右岸堤防道路' : item.origText;
     }
   }
+  labelsDirty = true;
 
   // カメラ自動追従モード（手延べ機先端を追跡）
   if (state.followTip && showNose && !isCompleted) {
@@ -538,8 +660,15 @@ function applySimulationAt(uRaw) {
   updateMechanicsHUD(activeMech, showNose, isCompleted, isJackdown, Math.max(0, ySoffit - yFinal), isDeckPourPhase ? visibleConc : -1);
 }
 
-// ---- ラベル構築＆投影 ----
+// ---- ラベル構築＆投影（カメラ行列キャッシュ・パネルクリップ・簡易重なり回避） ----
 const labelElems = [];
+let labelsDirty = true;
+const _proj = new THREE.Vector3();
+const _vpMat = new THREE.Matrix4();
+const _prevVpElements = new Float32Array(16);
+let _prevViewW = 0;
+let _prevViewH = 0;
+
 function buildLabels(meta) {
   labelsLayer.innerHTML = '';
   labelElems.length = 0;
@@ -550,19 +679,53 @@ function buildLabels(meta) {
     labelsLayer.appendChild(el);
     labelElems.push({ id: lb.id, origText: lb.text, hiddenByStage: false, el, pos: new THREE.Vector3(...lb.pos) });
   }
+  labelsDirty = true;
 }
 
-const _proj = new THREE.Vector3();
-function updateLabels() {
+function updateLabels(force = false) {
   if (!state.layerVisible.labels) {
-    labelsLayer.style.display = 'none';
+    if (labelsLayer.style.display !== 'none') labelsLayer.style.display = 'none';
     return;
   }
-  labelsLayer.style.display = 'block';
+  if (labelsLayer.style.display !== 'block') labelsLayer.style.display = 'block';
+
   const w = container.clientWidth;
   const h = container.clientHeight;
+  _vpMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  const elems = _vpMat.elements;
+
+  let changed = force || labelsDirty || w !== _prevViewW || h !== _prevViewH;
+  if (!changed) {
+    for (let i = 0; i < 16; i++) {
+      if (Math.abs(elems[i] - _prevVpElements[i]) > 1e-5) {
+        changed = true;
+        break;
+      }
+    }
+  }
+  if (!changed) return;
+
+  for (let i = 0; i < 16; i++) _prevVpElements[i] = elems[i];
+  _prevViewW = w;
+  _prevViewH = h;
+  labelsDirty = false;
+
+  // 表示中パネルのクリップ領域を取得
+  const sidebarEl = document.getElementById('sidebar');
+  const hudEl = document.getElementById('mech-hud');
+  const timelineEl = document.getElementById('timeline-bar');
+  const sidebarOpen = sidebarEl && !sidebarEl.classList.contains('collapsed');
+  const hudOpen = hudEl && !hudEl.classList.contains('collapsed');
+  const mobile = isMobileViewport();
+
+  const sideRight = sidebarOpen && !mobile ? (sidebarEl.offsetLeft + sidebarEl.offsetWidth + 8) : 0;
+  const hudLeft = hudOpen && !mobile ? (hudEl.offsetLeft - 8) : w + 100;
+  const hudBottom = hudOpen && !mobile ? (hudEl.offsetTop + hudEl.offsetHeight + 8) : 0;
+  const timelineTop = timelineEl ? (timelineEl.offsetTop - 8) : (h - 84);
+
+  const placed = [];
   for (const item of labelElems) {
-    if (item.hiddenByStage) {
+    if (item.hiddenByStage || (mobile && (sidebarOpen || hudOpen))) {
       item.el.style.display = 'none';
       continue;
     }
@@ -571,9 +734,52 @@ function updateLabels() {
       item.el.style.display = 'none';
       continue;
     }
+
+    const sx = (_proj.x * 0.5 + 0.5) * w;
+    let sy = (-_proj.y * 0.5 + 0.5) * h;
+
+    // 画面外・左サイドバー・右上HUD・下部タイムライン領域をクリップ
+    if (sx < 16 || sx > w - 16 || sy < 24 || sy > timelineTop) {
+      item.el.style.display = 'none';
+      continue;
+    }
+    if (sidebarOpen && !mobile && sx < sideRight) {
+      item.el.style.display = 'none';
+      continue;
+    }
+    if (hudOpen && !mobile && sx > hudLeft && sy < hudBottom) {
+      item.el.style.display = 'none';
+      continue;
+    }
+
+    // 簡易重なり回避（最大2段上へずらし、それでも重なる場合は非表示）
+    const estW = Math.min(200, Math.max(64, item.el.textContent.length * 10 + 18));
+    const estH = 22;
+    let overlaps = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      overlaps = false;
+      const x0 = sx - estW * 0.5;
+      const x1 = sx + estW * 0.5;
+      const y0 = sy - estH;
+      const y1 = sy;
+      for (const r of placed) {
+        if (x0 < r.x1 && x1 > r.x0 && y0 < r.y1 && y1 > r.y0) {
+          overlaps = true;
+          break;
+        }
+      }
+      if (!overlaps) break;
+      sy -= 24;
+    }
+    if (overlaps || sy < 24) {
+      item.el.style.display = 'none';
+      continue;
+    }
+
+    placed.push({ x0: sx - estW * 0.5, x1: sx + estW * 0.5, y0: sy - estH, y1: sy });
     item.el.style.display = 'block';
-    item.el.style.left = `${(_proj.x * 0.5 + 0.5) * w}px`;
-    item.el.style.top = `${(-_proj.y * 0.5 + 0.5) * h}px`;
+    item.el.style.left = `${sx.toFixed(1)}px`;
+    item.el.style.top = `${sy.toFixed(1)}px`;
   }
 }
 
@@ -605,7 +811,59 @@ function renderSideUI(meta) {
     .join('');
 }
 
+function updatePlayButtonText() {
+  const bp = document.getElementById('btn-play');
+  if (!bp) return;
+  bp.classList.toggle('playing', state.playing);
+  if (isMobileViewport()) {
+    bp.textContent = state.playing ? '⏸ 停止' : '▶ 再生';
+  } else {
+    bp.textContent = state.playing ? '⏸ 一時停止' : '▶ 送り出し再生';
+  }
+}
+
+function setPanelCollapsed(panelEl, toggleBtn, collapsed) {
+  if (!panelEl || !toggleBtn) return;
+  panelEl.classList.toggle('collapsed', collapsed);
+  toggleBtn.classList.toggle('active', !collapsed);
+  toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+  labelsDirty = true;
+}
+
 function bindUI() {
+  const sidebarEl = document.getElementById('sidebar');
+  const hudEl = document.getElementById('mech-hud');
+  const btnSidebar = document.getElementById('btn-toggle-sidebar');
+  const btnHud = document.getElementById('btn-toggle-hud');
+
+  // モバイル初期状態はサイドバー＆HUDともに折りたたみ（3Dキャンバスを広く確保）
+  if (isMobileViewport()) {
+    setPanelCollapsed(sidebarEl, btnSidebar, true);
+    setPanelCollapsed(hudEl, btnHud, true);
+  }
+  updatePlayButtonText();
+
+  btnSidebar?.addEventListener('click', () => {
+    const nextCollapsed = !sidebarEl.classList.contains('collapsed');
+    setPanelCollapsed(sidebarEl, btnSidebar, nextCollapsed);
+    if (!nextCollapsed && isMobileViewport()) {
+      setPanelCollapsed(hudEl, btnHud, true);
+    }
+    updateLabels(true);
+  });
+
+  btnHud?.addEventListener('click', () => {
+    const nextCollapsed = !hudEl.classList.contains('collapsed');
+    setPanelCollapsed(hudEl, btnHud, nextCollapsed);
+    if (!nextCollapsed && isMobileViewport()) {
+      setPanelCollapsed(sidebarEl, btnSidebar, true);
+    }
+    if (!nextCollapsed) {
+      requestAnimationFrame(() => drawBmdCanvas(lastBmdArgs.mech, lastBmdArgs.statusText));
+    }
+    updateLabels(true);
+  });
+
   document.querySelectorAll('.tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
@@ -622,7 +880,9 @@ function bindUI() {
   document.querySelectorAll('input[data-layer]').forEach((inp) => {
     inp.addEventListener('change', () => {
       state.layerVisible[inp.dataset.layer] = inp.checked;
+      labelsDirty = true;
       applySimulationAt(state.u);
+      updateLabels(true);
     });
   });
 
@@ -639,8 +899,7 @@ function bindUI() {
   const btnPlay = document.getElementById('btn-play');
   btnPlay.addEventListener('click', () => {
     state.playing = !state.playing;
-    btnPlay.classList.toggle('playing', state.playing);
-    btnPlay.textContent = state.playing ? '⏸ 一時停止' : '▶ 送り出し再生';
+    updatePlayButtonText();
     if (state.playing && state.u >= 0.995) applySimulationAt(0.0);
   });
 
@@ -669,7 +928,12 @@ function bindUI() {
     state.wireframe = !state.wireframe;
     e.currentTarget.classList.toggle('active', state.wireframe);
     scene.traverse((c) => {
-      if (c.isMesh && c.material) c.material.wireframe = state.wireframe;
+      if (c.isMesh && c.material) {
+        const mats = Array.isArray(c.material) ? c.material : [c.material];
+        for (const m of mats) {
+          if (m && 'wireframe' in m) m.wireframe = state.wireframe;
+        }
+      }
     });
   });
 
@@ -754,7 +1018,13 @@ async function init() {
           seenMeshIds.add(c.uuid);
           c.geometry = c.geometry.clone();
           const origPos = new Float32Array(c.geometry.attributes.position.array);
-          state.deformTargets.push({ mesh: c, origPos, kind: isNose ? 'nose' : 'girder', blkIndex: blkIdx });
+          state.deformTargets.push({
+            mesh: c,
+            origPos,
+            kind: isNose ? 'nose' : 'girder',
+            blkIndex: blkIdx,
+            lastStateKey: 'r:0.0000',
+          });
         }
       });
     }
@@ -769,9 +1039,14 @@ async function init() {
 }
 
 window.addEventListener('resize', () => {
-  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.aspect = container.clientWidth / Math.max(container.clientHeight, 1);
   camera.updateProjectionMatrix();
   renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  updatePlayButtonText();
+  labelsDirty = true;
+  updateLabels(true);
+  drawBmdCanvas(lastBmdArgs.mech, lastBmdArgs.statusText);
 });
 
 let lastTime = performance.now();
@@ -785,9 +1060,7 @@ function animate(now) {
     if (nextU >= 1.0) {
       applySimulationAt(1.0);
       state.playing = false;
-      const bp = document.getElementById('btn-play');
-      bp.classList.remove('playing');
-      bp.textContent = '▶ 送り出し再生';
+      updatePlayButtonText();
     } else {
       applySimulationAt(nextU);
     }

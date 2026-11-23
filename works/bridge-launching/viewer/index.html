@@ -36,8 +36,12 @@
           <button data-cam="underside">桁下・合成床版</button>
           <button data-cam="side">側面全景</button>
         </div>
-        <button id="btn-wireframe" class="tool-btn">網目</button>
-        <button id="btn-screenshot" class="tool-btn primary">PNG保存</button>
+        <div class="tool-group">
+          <button id="btn-toggle-sidebar" class="tool-btn active" title="左パネルの開閉" aria-expanded="true">☰ パネル</button>
+          <button id="btn-toggle-hud" class="tool-btn active" title="力学モニターHUDの開閉" aria-expanded="true">📊 HUD</button>
+          <button id="btn-wireframe" class="tool-btn" title="ワイヤーフレーム表示切替">網目</button>
+          <button id="btn-screenshot" class="tool-btn primary" title="現在の3D画面をPNG保存">PNG保存</button>
+        </div>
       </div>
     </header>
 
@@ -69,16 +73,18 @@
           </div>
           <div class="bmd-wrap">
             <div class="bmd-title">
-              <span>弾性たわみ曲線（青）＆ 曲げモーメント BMD（橙）</span>
+              <span>たわみ(青) / BMD(橙)</span>
               <span id="m-negm">Max -M: 0 kN·m</span>
             </div>
-            <canvas id="bmd-canvas" width="320" height="86"></canvas>
+            <canvas id="bmd-canvas" width="320" height="94"></canvas>
           </div>
         </div>
+
+        <div class="canvas-disclaimer" aria-label="免責注記">※個人の学習・概略検討用の参考モデル（実設計照査不可）</div>
       </div>
 
       <!-- 左サイドパネル -->
-      <aside class="sidebar">
+      <aside class="sidebar" id="sidebar">
         <div class="tabs">
           <button class="tab-btn active" data-tab="sim">送り出し制御</button>
           <button class="tab-btn" data-tab="layers">レイヤー</button>
@@ -152,10 +158,14 @@
             </div>
           </section>
         </div>
+
+        <footer class="sidebar-disclaimer">
+          ※本3Dモデル・力学解析は個人の学習・概略検討・可視化を目的とした参考シミュレーションであり、実構造物の設計照査・施工計画には公的基準に基づく専門検討が必要です。
+        </footer>
       </aside>
 
       <!-- 下部 連続送り出しタイムラインバー -->
-      <section class="timeline-bar">
+      <section class="timeline-bar" id="timeline-bar">
         <div class="timeline-controls">
           <button id="btn-prev" class="step-btn" title="前のステージ">⏮</button>
           <button id="btn-play" class="step-btn play">▶ 送り出し再生</button>
@@ -168,7 +178,7 @@
           </div>
           <input type="range" id="timeline-slider" min="0" max="1000" step="1" value="0" />
           <div class="step-ticks">
-            <span>1:仮設</span><span>2:1次地組</span><span>3:1次送出</span><span>4:2次地組</span><span>5:2次送出(52m)</span><span>6:3次地組</span><span>7:最終送出</span><span>8:解体・降下</span><span>9:配筋・打設</span><span>10:舗装・完成</span>
+            <span class="tick-major">1:仮設</span><span>2:1次地組</span><span>3:1次送出</span><span>4:2次地組</span><span class="tick-major">5:2次送出(52m)</span><span>6:3次地組</span><span>7:最終送出</span><span>8:解体・降下</span><span>9:配筋・打設</span><span class="tick-major">10:舗装・完成</span>
           </div>
         </div>
       </section>

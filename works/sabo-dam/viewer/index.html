@@ -80,12 +80,15 @@
         <div id="insp-body" class="hud-body"></div>
       </div>
 
+      <!-- モバイル用 左パネル開閉トグル -->
+      <button id="btn-panel-toggle" class="panel-toggle-btn" type="button" aria-expanded="false" aria-controls="left-panel">☰ パネル</button>
+
       <!-- 左コントロールパネル -->
       <aside class="side-panel left-panel" id="left-panel">
         <div class="panel-tabs">
           <button class="tab-btn active" data-tab="layers">レイヤー</button>
-          <button class="tab-btn" data-tab="pouring">打設割・基準</button>
-          <button class="tab-btn" data-tab="clipping">断面カット</button>
+          <button class="tab-btn" data-tab="pouring">打設割</button>
+          <button class="tab-btn" data-tab="clipping">断面</button>
           <button class="tab-btn" data-tab="quantities">数量表</button>
         </div>
 
@@ -242,7 +245,7 @@
             <div class="preset-clips">
               <button class="mini-btn" data-clip-preset="long_center">渓流中心 縦断</button>
               <button class="mini-btn" data-clip-preset="cross_main">主堤軸 横断</button>
-              <button class="mini-btn" data-clip-preset="cross_apron">水叩き・左岸堤 横断</button>
+              <button class="mini-btn" data-clip-preset="cross_apron">水叩・左岸堤 横断</button>
               <button class="mini-btn" data-clip-preset="reset">断面解除</button>
             </div>
           </section>
@@ -272,6 +275,10 @@
             </div>
           </section>
         </div>
+
+        <div class="panel-disclaimer">
+          ※本3Dモデルは個人の学習・概略検討用の参考モデルであり、実務の設計・施工には公的基準に基づく専門検討が必要です。
+        </div>
       </aside>
 
       <!-- 下部 4D 施工ステップタイムライン -->
@@ -291,6 +298,7 @@
             <span>0:現況</span><span>1:仮設・水替</span><span>2:床掘</span><span>3:主堤基礎</span><span>4:主堤中段</span><span>5:主堤完成</span><span>6:水叩・左岸堤</span><span>7:完成通水</span>
           </div>
         </div>
+        <div class="mobile-disclaimer">※個人の学習・概略検討用の参考モデルです（実務設計には専門検討が必要）</div>
       </section>
     </main>
   </div>

@@ -18,26 +18,29 @@
 <body class="theme-cyber">
   <div id="app">
     <header class="topbar">
-      <div class="brand">
+      <div class="topbar-main">
+        <div class="brand">
         <a href="../../../index.html" style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:6px;background:rgba(56,189,248,0.16);border:1px solid rgba(56,189,248,0.48);color:#e0f2fe;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;" title="ポートフォリオ一覧へ戻る">← 一覧へ</a>
-        <span class="badge">CIVIL ART 3D</span>
-        <div class="titles">
-          <h1 id="project-title">TOKYO UNDERGROUND — 都市地下解剖キューブ・ジオラマ</h1>
-          <p id="project-subtitle">36m×36m×深さ34m 5層インフラ断面（高架橋・共同溝・ライフライン・5層地質・場所打ち杭・開削地下鉄・大深度シールドTBM）</p>
+          <span class="badge">CIVIL ART 3D</span>
+          <div class="titles">
+            <h1 id="project-title">TOKYO UNDERGROUND — 都市地下解剖キューブ</h1>
+            <p id="project-subtitle">36m×36m×深さ34m 5層インフラ断面（高架橋・共同溝・5層地質・杭・開削地下鉄・シールドTBM）</p>
+          </div>
+        </div>
+        <div class="top-tools">
+          <button id="btn-pause" class="tool-btn" title="車両・地下鉄・TBM稼働の一時停止/再開">⏸ 稼働中</button>
+          <button id="btn-theme" class="tool-btn accent" title="サイバー / 昼模型テーマ切替">🌙 昼模型へ</button>
+          <button id="btn-auto-demo" class="tool-btn primary" title="自動回転・5層分解ショーケース">▶ デモ</button>
+          <button id="btn-shot" class="tool-btn" title="現在の3D画面をPNG保存">PNG</button>
         </div>
       </div>
-      <div class="top-actions">
-        <div class="camera-presets" id="camera-presets">
-          <button data-cam="iso" class="active">ジオラマ俯瞰</button>
-          <button data-cam="tbm">シールドTBM</button>
-          <button data-cam="subway">開削地下鉄</button>
-          <button data-cam="lifeline">共同溝・埋設管</button>
-          <button data-cam="exploded">5層分解全体</button>
-          <button data-cam="low">地下見上げ</button>
-        </div>
-        <button id="btn-theme" class="tool-btn accent">🌙 サイバー / 昼切替</button>
-        <button id="btn-auto-demo" class="tool-btn primary">▶ 自動ショーケース</button>
-        <button id="btn-shot" class="tool-btn">PNG</button>
+      <div class="camera-presets" id="camera-presets" role="toolbar" aria-label="カメラ視点プリセット">
+        <button data-cam="iso" class="active">ジオラマ俯瞰</button>
+        <button data-cam="tbm">シールドTBM</button>
+        <button data-cam="subway">開削地下鉄</button>
+        <button data-cam="lifeline">共同溝・管路</button>
+        <button data-cam="exploded">5層分解</button>
+        <button data-cam="low">地下見上げ</button>
       </div>
     </header>
 
@@ -49,19 +52,35 @@
         </div>
         <div id="labels-layer"></div>
 
+        <!-- パネル開閉トグル（PC折りたたみ時 / モバイル常時表示） -->
+        <button id="btn-toggle-sidebar" class="panel-toggle panel-toggle-left" type="button" aria-controls="sidebar" aria-expanded="true">☰ 操作</button>
+        <button id="btn-toggle-hud" class="panel-toggle panel-toggle-right" type="button" aria-controls="strata-hud" aria-expanded="true">🪨 地質HUD</button>
+
         <!-- 右上：地質柱状図 ＆ インフラ埋設深度プロファイル HUD -->
-        <div class="strata-hud">
+        <section id="strata-hud" class="strata-hud" aria-label="地質柱状図と地下インフラ深度">
           <div class="hud-head">
             <span>🪨 地質柱状図 ＆ 地下インフラ深度</span>
-            <span class="depth-tag">GL 0 〜 -34m</span>
+            <div class="hud-head-right">
+              <span class="depth-tag">GL 0〜-34m</span>
+              <button id="btn-close-hud" class="panel-close-btn" type="button" title="地質HUDを閉じる" aria-label="地質HUDを閉じる">✕</button>
+            </div>
           </div>
           <div id="strata-chart" class="strata-chart"></div>
+          <div class="infra-legend-hint">項目クリックで該当カメラへフォーカス</div>
           <div class="infra-legend" id="infra-legend"></div>
-        </div>
+        </section>
+
+        <!-- 常時確認できる誠実注記バー -->
+        <div class="disclaimer-bar">※本3Dモデルは個人の学習・概念理解用の模式ジオラマであり、実務の設計・施工には公的基準に基づく専門検討が必要です。</div>
       </div>
 
       <!-- 左コントロールパネル -->
-      <aside class="sidebar">
+      <aside id="sidebar" class="sidebar" aria-label="表示コントロールパネル">
+        <div class="sidebar-head">
+          <span>🎛️ 表示コントロール</span>
+          <button id="btn-close-sidebar" class="panel-close-btn" type="button" title="操作パネルを閉じる" aria-label="操作パネルを閉じる">✕</button>
+        </div>
+
         <section class="group">
           <h3>アート表示モード（ワンクリック）</h3>
           <div class="mode-grid">
@@ -95,17 +114,18 @@
           <label class="chk"><input type="checkbox" data-layer="l3" checked /><span class="sw" style="background:#38bdf8"></span>L3: 共同溝・水道・ガス・下水道</label>
           <label class="chk"><input type="checkbox" data-layer="l4" checked /><span class="sw" style="background:#22c55e"></span>L4: 開削地下鉄 ＆ 場所打ちRC杭(8本)</label>
           <label class="chk"><input type="checkbox" data-layer="l5" checked /><span class="sw" style="background:#ef4444"></span>L5: 大深度シールド ＆ 稼働中TBM</label>
-          <label class="chk"><input type="checkbox" id="chk-labels" checked /><span class="sw" style="background:#fbbf24"></span>構造・深度3Dラベル</label>
+          <label class="chk"><input type="checkbox" id="chk-labels" checked /><span class="sw" style="background:#fbbf24"></span>構造・深度3Dラベル（クリックで移動）</label>
           <label class="chk"><input type="checkbox" id="chk-rotate" /><span class="sw" style="background:#a855f7"></span>展示ターンテーブル自動回転</label>
         </section>
 
-        <section class="group">
+        <section class="group group-last">
           <h3>都市土木のリアル構造ポイント</h3>
           <div class="note-card">
-            ・<b>支持層根入れ</b>：高架橋の場所打ちRC杭8本は軟弱な沖積粘土(Ac)を貫通し、<b>東京礫層(Dg・N≥50)</b>へガッチリ定着。<br>
-            ・<b>地下立体交差</b>：杭列の隙間を縫うように、浅層に<b>開削地下鉄(GL-11m)</b>、さらに6m下に<b>大深度シールド2本(GL-24m)</b>が完全無干渉で交差。<br>
-            ・<b>稼働TBM断面</b>：手前上1/4をカットアウェイし、回転カッターヘッド・推進ジャッキ16本・スクリューコンベヤ・エレクターを可視化。
+            ・<b>支持層根入れ</b>：場所打ちRC杭8本は軟弱な沖積粘土(Ac)を貫通し、<b>東京礫層(Dg・N≥50)</b>へ定着。<br>
+            ・<b>地下立体交差</b>：杭列の隙間を縫い、浅層に<b>開削地下鉄(GL-11.0m)</b>、下層に<b>大深度シールド2本(Φ7.2m / GL-24.0m)</b>が交差。<br>
+            ・<b>稼働TBM断面</b>：1/4カットアウェイで回転カッターヘッド・推進ジャッキ16本・スクリューコンベヤを可視化。
           </div>
+          <p class="disclaimer-inline">※本3Dモデルは学習・概念理解用の模式ジオラマであり、実設計・施工検討には使用できません。</p>
         </section>
       </aside>
     </main>

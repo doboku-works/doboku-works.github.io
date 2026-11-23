@@ -5,19 +5,32 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const container = document.getElementById('canvas-container');
 const labelsLayer = document.getElementById('labels-layer');
+const sidebarEl = document.getElementById('sidebar');
+const hudEl = document.getElementById('strata-hud');
+const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+const btnToggleHud = document.getElementById('btn-toggle-hud');
 
 // ---- Three.js シーン構築 ----
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x070d1a);
 
-const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.5, 600);
+const camera = new THREE.PerspectiveCamera(
+  40,
+  Math.max(1, container.clientWidth) / Math.max(1, container.clientHeight),
+  0.5,
+  600
+);
 camera.position.set(50, 22, 54);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  preserveDrawingBuffer: true,
+  powerPreference: 'high-performance',
+});
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.08;
 container.appendChild(renderer.domElement);
@@ -49,6 +62,7 @@ sunLight.shadow.camera.bottom = -45;
 sunLight.shadow.camera.near = 10;
 sunLight.shadow.camera.far = 190;
 sunLight.shadow.bias = -0.0003;
+sunLight.shadow.radius = 2.0;
 scene.add(sunLight);
 
 const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.72);
@@ -106,19 +120,63 @@ const state = {
   showLabels: true,
   autoRotate: false,
   autoDemo: false,
+  paused: false,
   demoClock: 0.0,
   simTime: 0.0,
+  sidebarOpen: window.innerWidth > 900,
+  hudOpen: window.innerWidth > 900,
   layerVisible: { l1: true, l2: true, l3: true, l4: true, l5: true },
 };
 
 const CAMERA_PRESETS = {
   iso: { pos: [50, 20, 52], target: [0, -11.5, 0] },
-  tbm: { pos: [27, -17.5, 29], target: [7.5, -24.0, 10.0] },
+  tbm: { pos: [30, -18.5, 24], target: [8.0, -24.0, 10.0] },
   subway: { pos: [14, -6.5, 36], target: [0, -11.0, 2.0] },
   lifeline: { pos: [34, 4.5, 32], target: [2.0, -3.5, 4.0] },
-  exploded: { pos: [72, 26, 74], target: [0, -2.5, 0] },
+  exploded: { pos: [78, 34, 80], target: [0, 3.5, 0] },
   low: { pos: [36, -30, 38], target: [0, -15.0, 0] },
 };
+
+const LABEL_CAM_MAP = {
+  VIADUCT: 'iso',
+  CULVERT: 'lifeline',
+  WATER: 'lifeline',
+  SEWER: 'lifeline',
+  SUBWAY: 'subway',
+  PILES: 'low',
+  TBM: 'tbm',
+  SHIELD_N: 'tbm',
+};
+
+function isMobileViewport() {
+  return window.innerWidth <= 900;
+}
+
+function setSidebarOpen(open) {
+  state.sidebarOpen = !!open;
+  if (state.sidebarOpen && isMobileViewport() && state.hudOpen) {
+    state.hudOpen = false;
+    hudEl.classList.add('is-collapsed');
+    btnToggleHud.classList.remove('is-hidden');
+    btnToggleHud.setAttribute('aria-expanded', 'false');
+  }
+  sidebarEl.classList.toggle('is-collapsed', !state.sidebarOpen);
+  btnToggleSidebar.classList.toggle('is-hidden', state.sidebarOpen);
+  btnToggleSidebar.setAttribute('aria-expanded', String(state.sidebarOpen));
+}
+
+function setHudOpen(open) {
+  state.hudOpen = !!open;
+  if (state.hudOpen && isMobileViewport() && state.sidebarOpen) {
+    state.sidebarOpen = false;
+    sidebarEl.classList.add('is-collapsed');
+    btnToggleSidebar.classList.remove('is-hidden');
+    btnToggleSidebar.setAttribute('aria-expanded', 'false');
+  }
+  hudEl.classList.toggle('is-collapsed', !state.hudOpen);
+  btnToggleHud.classList.toggle('is-hidden', state.hudOpen);
+  btnToggleHud.setAttribute('aria-expanded', String(state.hudOpen));
+}
 
 let camAnim = null;
 function moveCameraTo(key) {
@@ -138,6 +196,9 @@ function moveCameraTo(key) {
 function applyTheme(theme) {
   state.theme = theme;
   const isDay = theme === 'day';
+  document.body.classList.toggle('theme-day', isDay);
+  document.body.classList.toggle('theme-cyber', !isDay);
+
   scene.background = new THREE.Color(isDay ? 0xdbe5f0 : 0x070d1a);
   hemiLight.color.setHex(isDay ? 0xf0f8ff : 0x88b4e8);
   hemiLight.groundColor.setHex(isDay ? 0x8a929e : 0x1e293b);
@@ -147,7 +208,7 @@ function applyTheme(theme) {
   scene.environmentIntensity = isDay ? 0.58 : 0.42;
   renderer.toneMappingExposure = isDay ? 1.04 : 1.12;
   floorGrid.visible = !isDay;
-  document.getElementById('btn-theme').textContent = isDay ? '☀ 昼模型 / サイバーへ' : '🌙 サイバー / 昼模型へ';
+  document.getElementById('btn-theme').textContent = isDay ? '☀ サイバーへ' : '🌙 昼模型へ';
 }
 
 // ---- 地層ウォール透明度 ＆ 5層 Exploded View 更新 ----
@@ -164,13 +225,17 @@ function updateDisplay() {
   const bOp = state.soilBackOpacity * explodeFade;
 
   const setWallList = (list, op) => {
+    const nextTransparent = op < 0.98;
+    const nextDepthWrite = op >= 0.95;
     for (const m of list) {
       m.visible = op > 0.02;
       if (m.material) {
-        m.material.transparent = op < 0.98;
+        if (m.material.transparent !== nextTransparent) {
+          m.material.transparent = nextTransparent;
+          m.material.needsUpdate = true;
+        }
         m.material.opacity = op;
-        m.material.depthWrite = op >= 0.95;
-        m.material.needsUpdate = true;
+        m.material.depthWrite = nextDepthWrite;
       }
     }
   };
@@ -196,17 +261,21 @@ function updateAnimations(tSec) {
   animGroups.carLo3.position.set(1.55, 0.0, wrap(tSec * 4.8 + 8.0, 31.0));
   animGroups.carLo3.rotation.y = -Math.PI * 0.5;
 
-  // 浅層 開削RCボックス地下鉄（Z方向往復走行・カットアウェイ窓から緑帯と光る窓がクッキリ見える！）
+  // 浅層 開削RCボックス地下鉄（Z方向往復走行）
   animGroups.trainShallow.position.set(2.2, -13.15, wrap(tSec * 5.2 + 2.0, 24.0));
 
-  // 大深度 北線シールド地下鉄（X方向走行・浅層地下鉄の下を立体交差＋右面断面から顔を出す！）
+  // 大深度 北線シールド地下鉄（X方向走行・浅層地下鉄の下を立体交差）
   animGroups.trainDeep.position.set(wrap(tSec * 6.5 + 8.0, 24.0), -25.25, -10.0);
 
-  // 稼働中シールドマシン TBM カッターヘッド回転！
+  // 稼働中シールドマシン TBM カッターヘッド回転
   animGroups.tbmCutter.rotation.x = tSec * 1.45;
 }
 
 // ---- ワンクリック表示モード ----
+function clearActiveModeBtn() {
+  document.querySelectorAll('.mode-btn.active').forEach((b) => b.classList.remove('active'));
+}
+
 function setMode(mode) {
   document.querySelectorAll('.mode-btn').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
   if (mode === 'cutaway') {
@@ -240,7 +309,7 @@ function syncSlidersFromState() {
   document.getElementById('val-soil-back').textContent = `${Math.round(state.soilBackOpacity * 100)} %`;
 }
 
-// ---- 3D ラベル ----
+// ---- 3D ラベル（クリック連携＋重なり回避＋パネル領域クリップ） ----
 const labelElems = [];
 function buildLabels(meta) {
   labelsLayer.innerHTML = '';
@@ -249,9 +318,31 @@ function buildLabels(meta) {
     const el = document.createElement('div');
     el.className = 'label-3d';
     el.textContent = lb.text;
+    const camKey = LABEL_CAM_MAP[lb.id] || 'iso';
+    el.title = 'クリックで該当エリアへカメラ移動';
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      moveCameraTo(camKey);
+    });
     labelsLayer.appendChild(el);
-    labelElems.push({ el, layer: lb.layer, basePos: new THREE.Vector3(...lb.pos) });
+    labelElems.push({
+      el,
+      id: lb.id,
+      layer: lb.layer,
+      basePos: new THREE.Vector3(...lb.pos),
+      w: 0,
+      h: 0,
+    });
   }
+}
+
+function rectsOverlap(a, b, pad = 0) {
+  return !(
+    a.right + pad < b.left ||
+    a.left - pad > b.right ||
+    a.bottom + pad < b.top ||
+    a.top - pad > b.bottom
+  );
 }
 
 const _proj = new THREE.Vector3();
@@ -263,6 +354,32 @@ function updateLabels() {
   labelsLayer.style.display = 'block';
   const w = container.clientWidth;
   const h = container.clientHeight;
+  if (w <= 0 || h <= 0) return;
+
+  // 表示中パネルの占有矩形（コンテナ相対）
+  const cRect = container.getBoundingClientRect();
+  const blockedRects = [];
+  if (state.sidebarOpen && sidebarEl) {
+    const r = sidebarEl.getBoundingClientRect();
+    blockedRects.push({
+      left: r.left - cRect.left,
+      right: r.right - cRect.left,
+      top: r.top - cRect.top,
+      bottom: r.bottom - cRect.top,
+    });
+  }
+  if (state.hudOpen && hudEl) {
+    const r = hudEl.getBoundingClientRect();
+    blockedRects.push({
+      left: r.left - cRect.left,
+      right: r.right - cRect.left,
+      top: r.top - cRect.top,
+      bottom: r.bottom - cRect.top,
+    });
+  }
+
+  const placedRects = [];
+
   for (const item of labelElems) {
     const lk = `l${item.layer}`;
     if (!state.layerVisible[lk]) {
@@ -272,24 +389,93 @@ function updateLabels() {
     _proj.copy(item.basePos);
     _proj.y += (EXPLODE_OFFSETS[lk] || 0) * state.explode;
     _proj.applyMatrix4(rootGroup.matrixWorld).project(camera);
+
     if (_proj.z > 1 || _proj.z < -1) {
       item.el.style.display = 'none';
       continue;
     }
+
+    const x = (_proj.x * 0.5 + 0.5) * w;
+    const y = (-_proj.y * 0.5 + 0.5) * h;
+
+    // 画面端マージン外は非表示
+    if (x < 16 || x > w - 16 || y < 26 || y > h - 30) {
+      item.el.style.display = 'none';
+      continue;
+    }
+
+    // 初回のみ幅・高さを実測キャッシュ（以降はレイアウト強制再計算なし）
+    if (item.w === 0 || item.h === 0) {
+      item.el.style.visibility = 'hidden';
+      item.el.style.display = 'block';
+      item.w = item.el.offsetWidth || 160;
+      item.h = item.el.offsetHeight || 22;
+      item.el.style.visibility = '';
+    }
+
+    const box = {
+      left: x - item.w * 0.5,
+      right: x + item.w * 0.5,
+      top: y - item.h,
+      bottom: y,
+    };
+
+    // 左右画面外にはみ出すラベルは非表示
+    if (box.left < 6 || box.right > w - 6 || box.top < 6) {
+      item.el.style.display = 'none';
+      continue;
+    }
+
+    // 開いているサイドバー／地質HUDと重なる場合は非表示
+    let occluded = false;
+    for (const br of blockedRects) {
+      if (rectsOverlap(box, br, 4)) {
+        occluded = true;
+        break;
+      }
+    }
+    if (occluded) {
+      item.el.style.display = 'none';
+      continue;
+    }
+
+    // 上位ラベルとの重なり回避
+    let collided = false;
+    for (const pr of placedRects) {
+      if (rectsOverlap(box, pr, 6)) {
+        collided = true;
+        break;
+      }
+    }
+    if (collided) {
+      item.el.style.display = 'none';
+      continue;
+    }
+
+    placedRects.push(box);
     item.el.style.display = 'block';
-    item.el.style.left = `${(_proj.x * 0.5 + 0.5) * w}px`;
-    item.el.style.top = `${(-_proj.y * 0.5 + 0.5) * h}px`;
+    item.el.style.left = `${x}px`;
+    item.el.style.top = `${y}px`;
   }
 }
 
 // ---- 右上 地質柱状図 HUD 描画 ----
+function resolveInfraCamera(name) {
+  if (name.includes('高架橋')) return 'iso';
+  if (name.includes('ガス') || name.includes('共同溝') || name.includes('下水道')) return 'lifeline';
+  if (name.includes('開削')) return 'subway';
+  if (name.includes('シールド')) return 'tbm';
+  if (name.includes('杭')) return 'low';
+  return 'iso';
+}
+
 function renderStrataHUD(meta) {
   const sc = document.getElementById('strata-chart');
   sc.innerHTML = meta.strata
     .map((s) => {
       const rgb = `rgb(${s.color[0]},${s.color[1]},${s.color[2]})`;
       const th = Math.abs(s.y_bot - s.y_top);
-      const pad = Math.max(3, Math.round(th * 0.7));
+      const pad = Math.max(3, Math.round(th * 0.65));
       return `<div class="st-bar" style="background:${rgb};padding-top:${pad}px;padding-bottom:${pad}px" title="${s.desc}">
         <span><b>${s.name}</b></span>
         <span class="nv">${s.n_value}</span>
@@ -299,12 +485,47 @@ function renderStrataHUD(meta) {
 
   const il = document.getElementById('infra-legend');
   il.innerHTML = meta.infra_depths
-    .map((d) => `<div class="il-row"><span class="il-left"><span class="il-dot" style="background:${d.color}"></span>${d.name}</span><span class="il-gl">${d.gl}</span></div>`)
+    .map((d) => {
+      const cam = resolveInfraCamera(d.name);
+      return `<div class="il-row" data-cam="${cam}" role="button" tabindex="0" title="クリックで「${d.name}」へフォーカス">
+        <span class="il-left"><span class="il-dot" style="background:${d.color}"></span>${d.name}</span>
+        <span class="il-gl">${d.gl}</span>
+      </div>`;
+    })
     .join('');
+
+  il.querySelectorAll('.il-row').forEach((row) => {
+    const go = () => {
+      moveCameraTo(row.dataset.cam);
+      if (isMobileViewport()) setHudOpen(false);
+    };
+    row.addEventListener('click', go);
+    row.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        go();
+      }
+    });
+  });
+}
+
+function setPaused(paused) {
+  state.paused = !!paused;
+  const btn = document.getElementById('btn-pause');
+  btn.classList.toggle('paused', state.paused);
+  btn.textContent = state.paused ? '▶ 停止中' : '⏸ 稼働中';
 }
 
 // ---- UI 結線 ----
 function bindUI() {
+  setSidebarOpen(state.sidebarOpen);
+  setHudOpen(state.hudOpen);
+
+  btnToggleSidebar.addEventListener('click', () => setSidebarOpen(true));
+  document.getElementById('btn-close-sidebar').addEventListener('click', () => setSidebarOpen(false));
+  btnToggleHud.addEventListener('click', () => setHudOpen(true));
+  document.getElementById('btn-close-hud').addEventListener('click', () => setHudOpen(false));
+
   document.querySelectorAll('#camera-presets button').forEach((btn) => {
     btn.addEventListener('click', () => moveCameraTo(btn.dataset.cam));
   });
@@ -312,16 +533,19 @@ function bindUI() {
     btn.addEventListener('click', () => setMode(btn.dataset.mode));
   });
   document.getElementById('sl-explode').addEventListener('input', (e) => {
+    clearActiveModeBtn();
     state.explode = Number(e.target.value) / 100.0;
     syncSlidersFromState();
     updateDisplay();
   });
   document.getElementById('sl-soil-front').addEventListener('input', (e) => {
+    clearActiveModeBtn();
     state.soilFrontOpacity = Number(e.target.value) / 100.0;
     syncSlidersFromState();
     updateDisplay();
   });
   document.getElementById('sl-soil-back').addEventListener('input', (e) => {
+    clearActiveModeBtn();
     state.soilBackOpacity = Number(e.target.value) / 100.0;
     syncSlidersFromState();
     updateDisplay();
@@ -334,12 +558,13 @@ function bindUI() {
   });
   document.getElementById('chk-labels').addEventListener('change', (e) => (state.showLabels = e.target.checked));
   document.getElementById('chk-rotate').addEventListener('change', (e) => (state.autoRotate = e.target.checked));
+  document.getElementById('btn-pause').addEventListener('click', () => setPaused(!state.paused));
   document.getElementById('btn-theme').addEventListener('click', () => applyTheme(state.theme === 'cyber' ? 'day' : 'cyber'));
   document.getElementById('btn-auto-demo').addEventListener('click', (e) => {
     state.autoDemo = !state.autoDemo;
     state.demoClock = 0.0;
     e.currentTarget.classList.toggle('running', state.autoDemo);
-    e.currentTarget.textContent = state.autoDemo ? '⏸ ショーケース停止' : '▶ 自動ショーケース';
+    e.currentTarget.textContent = state.autoDemo ? '⏸ 停止' : '▶ デモ';
   });
   document.getElementById('btn-shot').addEventListener('click', () => {
     renderer.render(scene, camera);
@@ -385,7 +610,6 @@ async function init() {
         if (obj.name === 'soil_wall_x_neg' || obj.name === 'soil_wall_z_neg') soilWalls.back.push(obj);
       }
       if (!obj.name || obj === gltf.scene) return;
-      // 直下ノード（親が gltf.scene または非命名ラッパ）のみ仕分け
       const pName = obj.parent?.name || '';
       if (pName && pName === obj.name) return;
       if (obj.parent && obj.parent !== gltf.scene && pName && !pName.startsWith('Scene')) return;
@@ -421,35 +645,51 @@ async function init() {
   }
 }
 
-window.addEventListener('resize', () => {
-  camera.aspect = container.clientWidth / container.clientHeight;
+function handleResize() {
+  const w = Math.max(1, container.clientWidth);
+  const h = Math.max(1, container.clientHeight);
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(container.clientWidth, container.clientHeight);
-});
+  renderer.setSize(w, h);
+  for (const item of labelElems) {
+    item.w = 0;
+    item.h = 0;
+  }
+}
+window.addEventListener('resize', handleResize);
 
 let lastNow = performance.now();
 function animate(now) {
   requestAnimationFrame(animate);
   const dt = Math.min(0.05, (now - lastNow) / 1000.0);
   lastNow = now;
-  state.simTime += dt;
-  updateAnimations(state.simTime);
+
+  if (!state.paused) {
+    state.simTime += dt;
+    updateAnimations(state.simTime);
+  }
 
   if (state.autoRotate) {
     rootGroup.rotation.y += dt * 0.25;
   }
+
   if (state.autoDemo) {
     state.demoClock += dt;
     const ph = (state.demoClock % 14.0) / 14.0;
     rootGroup.rotation.y = ph * Math.PI * 2.0;
-    // 0..0.35: L字透視回転 → 0.35..0.65: パカッと5層分解 → 0.65..1.0: 合体戻る！
-    if (ph < 0.30) state.explode = 0.0;
-    else if (ph < 0.45) state.explode = ((ph - 0.30) / 0.15) * 0.90;
-    else if (ph < 0.72) state.explode = 0.90;
-    else if (ph < 0.88) state.explode = (1.0 - (ph - 0.72) / 0.16) * 0.90;
-    else state.explode = 0.0;
-    syncSlidersFromState();
-    updateDisplay();
+
+    let nextExplode = 0.0;
+    if (ph < 0.30) nextExplode = 0.0;
+    else if (ph < 0.45) nextExplode = ((ph - 0.30) / 0.15) * 0.90;
+    else if (ph < 0.72) nextExplode = 0.90;
+    else if (ph < 0.88) nextExplode = (1.0 - (ph - 0.72) / 0.16) * 0.90;
+    else nextExplode = 0.0;
+
+    if (Math.abs(nextExplode - state.explode) > 1e-4) {
+      state.explode = nextExplode;
+      syncSlidersFromState();
+      updateDisplay();
+    }
   }
 
   if (camAnim) {
@@ -478,6 +718,8 @@ window.__demoApi = {
   setRootRotY: (rad) => { rootGroup.rotation.y = Number(rad); renderer.render(scene, camera); },
   setSimTime: (t) => { state.simTime = Number(t); updateAnimations(state.simTime); renderer.render(scene, camera); },
   setLabels: (v) => { state.showLabels = !!v; document.getElementById('chk-labels').checked = !!v; updateLabels(); },
+  setPaused: (v) => { setPaused(!!v); },
+  setPanels: (left, right) => { setSidebarOpen(!!left); setHudOpen(!!right); updateLabels(); },
   setCamera: (pos, tgt) => {
     camAnim = null;
     camera.position.set(pos[0], pos[1], pos[2]);

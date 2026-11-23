@@ -66,7 +66,7 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.02;
 renderer.localClippingEnabled = true;
@@ -74,7 +74,10 @@ container.appendChild(renderer.domElement);
 
 // 環境光反射（PBR法線・コンクリート質感向上）
 const pmremGen = new THREE.PMREMGenerator(renderer);
-scene.environment = pmremGen.fromScene(new RoomEnvironment(), 0.04).texture;
+const envScene = new RoomEnvironment();
+scene.environment = pmremGen.fromScene(envScene, 0.04).texture;
+envScene.dispose();
+pmremGen.dispose();
 scene.environmentIntensity = 0.35;
 
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -137,11 +140,20 @@ function getActiveClipPlanes() {
 
 function applyClippingToAll() {
   const active = getActiveClipPlanes();
+  const hasClip = active.length > 0;
   state.nodes.forEach((obj) => {
     obj.traverse((child) => {
       if (child.isMesh && child.material) {
         const mats = Array.isArray(child.material) ? child.material : [child.material];
         mats.forEach((m) => {
+          if (m.userData._origSide === undefined) {
+            m.userData._origSide = m.side;
+          }
+          const nextSide = hasClip ? THREE.DoubleSide : m.userData._origSide;
+          if (m.side !== nextSide) {
+            m.side = nextSide;
+            m.needsUpdate = true;
+          }
           m.clippingPlanes = active;
           m.clipShadows = true;
         });
@@ -402,6 +414,7 @@ function updateSceneVisibility() {
   contoursGroup.visible = state.layerVisible.contours;
   craneRingsGroup.visible = state.layerVisible.crane_rings || (state.step >= 3 && state.step <= 6 && state.layerVisible.temp_site);
   labelsLayer.style.display = state.layerVisible.labels ? 'block' : 'none';
+  rebuildInteractableMeshes();
 }
 
 function setDailySession(sessionNum) {
@@ -459,7 +472,11 @@ function setDailySession(sessionNum) {
   updateSceneVisibility();
   renderPouringPlanUI();
   const selTr = document.querySelector('#daily-table tbody tr.selected');
-  if (selTr) selTr.scrollIntoView({ block: 'center' });
+  const wrap = selTr?.closest('.table-wrap');
+  if (selTr && wrap) {
+    const targetTop = selTr.offsetTop - wrap.clientHeight / 2 + selTr.offsetHeight / 2;
+    wrap.scrollTop = Math.max(0, targetTop);
+  }
 }
 
 // 主堤打設ブロック色分け（B1=青, B2=緑, B3=黄, B4=橙）
@@ -562,44 +579,79 @@ function buildOverlays(meta) {
 }
 
 // ---- 3Dスクリーン投影ラベル ----
+const SHORT_LABELS = {
+  main_dam: { text: '主堤', priority: 1 },
+  sub_dam: { text: '副堤', priority: 2 },
+  apron: { text: '水叩き', priority: 3 },
+  cutoff_vwall: { text: '垂直壁', priority: 4 },
+  left_bank_levee: { text: '左岸堤', priority: 5 },
+  side_wall_left: { text: '左岸側壁', priority: 6 },
+  side_wall_right: { text: '右岸側壁', priority: 7 },
+  foot_protection: { text: '根固め工', priority: 8 },
+};
+
 const labelElements = [];
 function buildLabels(meta) {
   labelsLayer.innerHTML = '';
   labelElements.length = 0;
 
   for (const ann of meta.annotations || []) {
+    const mapped = SHORT_LABELS[ann.id];
+    const shortText = mapped ? mapped.text : String(ann.label || '').split('（')[0];
+    const priority = mapped ? mapped.priority : 9;
     const el = document.createElement('div');
     el.className = 'label-3d';
-    el.textContent = ann.label;
+    el.textContent = shortText;
     labelsLayer.appendChild(el);
+    const estW = Math.max(44, shortText.length * 12 + 18);
     labelElements.push({
       el,
       pos: new THREE.Vector3(...ann.position),
       minStep: ann.step_built,
       layerKey: ann.mesh_keys?.length ? getLayerKey(ann.mesh_keys[0]) : null,
       isStation: false,
+      priority,
+      w: estW,
+      h: 24,
     });
   }
 
-  for (const st of meta.stations || []) {
+  (meta.stations || []).forEach((st, idx) => {
     const el = document.createElement('div');
     el.className = 'label-3d label-station';
-    el.textContent = `${st.name} (EL.${st.bed_el_m.toFixed(1)})`;
+    el.textContent = st.name;
     labelsLayer.appendChild(el);
+    const estW = Math.max(38, st.name.length * 8 + 14);
     labelElements.push({
       el,
       pos: new THREE.Vector3(st.x, st.y + 1.4, st.z),
       minStep: 0,
       isStation: true,
+      priority: 10 + idx,
+      w: estW,
+      h: 20,
     });
-  }
+  });
+
+  labelElements.sort((a, b) => a.priority - b.priority);
 }
 
 const _projVec = new THREE.Vector3();
+const leftPanelEl = document.getElementById('left-panel');
 function updateLabels() {
   if (!state.layerVisible.labels) return;
   const w = container.clientWidth;
   const h = container.clientHeight;
+  const isMobile = window.innerWidth <= 768;
+  const panelVisible = leftPanelEl && (!isMobile || leftPanelEl.classList.contains('open'));
+  const panelRight = panelVisible ? leftPanelEl.offsetLeft + leftPanelEl.offsetWidth + 8 : 0;
+  const panelBottom = panelVisible ? leftPanelEl.offsetTop + leftPanelEl.offsetHeight + 4 : 0;
+  const bottomMargin = isMobile ? 88 : 84;
+  const topMargin = isMobile ? 48 : 26;
+
+  const placed = [];
+  const pad = 6;
+
   for (const item of labelElements) {
     if (!item.isStation) {
       const layerOff = item.layerKey && item.layerKey in state.layerVisible && !state.layerVisible[item.layerKey];
@@ -615,6 +667,39 @@ function updateLabels() {
     }
     const sx = (_projVec.x * 0.5 + 0.5) * w;
     const sy = (-_projVec.y * 0.5 + 0.5) * h;
+
+    // 画面外・タイムライン領域を除外
+    const halfW = item.w * 0.5;
+    const x1 = sx - halfW;
+    const x2 = sx + halfW;
+    const y1 = sy - item.h;
+    const y2 = sy;
+    if (x1 < 6 || x2 > w - 6 || y1 < topMargin || y2 > h - bottomMargin) {
+      item.el.style.display = 'none';
+      continue;
+    }
+
+    // 左パネル表示時はパネル領域内のラベルを非表示（裏見切れ防止）
+    if (panelVisible && x1 < panelRight && y2 > 0 && y1 < panelBottom) {
+      item.el.style.display = 'none';
+      continue;
+    }
+
+    // 2Dバウンディングボックス重なり回避（上位優先ラベルを優先表示）
+    let overlaps = false;
+    for (let i = 0; i < placed.length; i++) {
+      const b = placed[i];
+      if (x1 - pad < b.x2 && x2 + pad > b.x1 && y1 - pad < b.y2 && y2 + pad > b.y1) {
+        overlaps = true;
+        break;
+      }
+    }
+    if (overlaps) {
+      item.el.style.display = 'none';
+      continue;
+    }
+
+    placed.push({ x1, x2, y1, y2 });
     item.el.style.display = 'block';
     item.el.style.left = `${sx}px`;
     item.el.style.top = `${sy}px`;
@@ -798,7 +883,8 @@ const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 const cursorReadout = document.getElementById('cursor-coords');
 
-function getInteractableMeshes() {
+let cachedInteractableMeshes = [];
+function rebuildInteractableMeshes() {
   const list = [];
   state.nodes.forEach((obj) => {
     if (!obj.visible) return;
@@ -806,7 +892,11 @@ function getInteractableMeshes() {
       if (child.isMesh) list.push(child);
     });
   });
-  return list;
+  cachedInteractableMeshes = list;
+}
+
+function getInteractableMeshes() {
+  return cachedInteractableMeshes;
 }
 
 function clearSelectionHighlight() {
@@ -896,17 +986,28 @@ function addMeasurePoint(pt) {
 function clearMeasure() {
   state.measurePts = [];
   while (measureGroup.children.length) {
-    measureGroup.remove(measureGroup.children[0]);
+    const child = measureGroup.children[0];
+    if (child.geometry) child.geometry.dispose();
+    if (child.material) {
+      if (Array.isArray(child.material)) child.material.forEach((m) => m.dispose());
+      else child.material.dispose();
+    }
+    measureGroup.remove(child);
   }
   document.getElementById('measure-body').textContent = 'モデル上の2点をクリックしてください。';
 }
 
 let pointerDownPos = { x: 0, y: 0 };
+let lastRaycastTime = 0;
 renderer.domElement.addEventListener('pointerdown', (e) => {
   pointerDownPos = { x: e.clientX, y: e.clientY };
 });
 
 renderer.domElement.addEventListener('pointermove', (e) => {
+  if (e.buttons !== 0) return; // ドラッグ中はスキップ
+  const now = performance.now();
+  if (now - lastRaycastTime < 60) return; // スロットリング
+  lastRaycastTime = now;
   const rect = renderer.domElement.getBoundingClientRect();
   pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -949,7 +1050,38 @@ renderer.domElement.addEventListener('pointerup', (e) => {
 });
 
 // ---- 4D 施工ステップ制御 ----
+function stopDailyPlay() {
+  if (state.dailyPlaying) {
+    state.dailyPlaying = false;
+    clearInterval(state.dailyTimer);
+    state.dailyTimer = null;
+    const btn = document.getElementById('btn-daily-play');
+    if (btn) btn.textContent = '▶ 日別打設再生';
+  }
+}
+
+function stopMainPlay() {
+  if (state.playing) {
+    state.playing = false;
+    clearInterval(state.playTimer);
+    state.playTimer = null;
+    const btn = document.getElementById('btn-step-play');
+    if (btn) btn.textContent = '▶ 再生';
+  }
+}
+
 function setStep(stepIdx) {
+  if (state.dailySession > 0 || state.dailyPlaying) {
+    stopDailyPlay();
+    state.dailySession = 0;
+    const sl = document.getElementById('daily-session-slider');
+    const tx = document.getElementById('daily-session-txt');
+    if (sl) sl.value = '0';
+    if (tx) tx.textContent = '通常';
+    clearSelectionHighlight();
+    document.getElementById('inspector-hud').classList.add('hidden');
+    renderPouringPlanUI();
+  }
   state.step = Math.max(0, Math.min(7, Number(stepIdx)));
   document.getElementById('step-slider').value = String(state.step);
   const info = state.meta?.construction_steps?.[state.step];
@@ -961,11 +1093,12 @@ function setStep(stepIdx) {
 }
 
 function togglePlay() {
-  state.playing = !state.playing;
-  const btn = document.getElementById('btn-step-play');
-  if (state.playing) {
+  if (!state.playing) {
+    stopDailyPlay();
+    state.playing = true;
+    const btn = document.getElementById('btn-step-play');
     btn.textContent = '⏸ 停止';
-    if (state.step === 7) setStep(0);
+    if (state.step === 7 || state.dailySession > 0) setStep(0);
     state.playTimer = setInterval(() => {
       if (state.step >= 7) {
         setStep(0);
@@ -974,13 +1107,26 @@ function togglePlay() {
       }
     }, 2400);
   } else {
-    btn.textContent = '▶ 再生';
-    clearInterval(state.playTimer);
+    stopMainPlay();
   }
 }
 
 // ---- UIイベント結線 ----
 function bindUI() {
+  // モバイル用 左パネル開閉トグル
+  const btnPanelToggle = document.getElementById('btn-panel-toggle');
+  const leftPanel = document.getElementById('left-panel');
+  if (btnPanelToggle && leftPanel) {
+    const setPanelOpen = (open) => {
+      leftPanel.classList.toggle('open', open);
+      btnPanelToggle.setAttribute('aria-expanded', String(open));
+      btnPanelToggle.textContent = open ? '✕ 閉じる' : '☰ パネル';
+    };
+    btnPanelToggle.addEventListener('click', () => {
+      setPanelOpen(!leftPanel.classList.contains('open'));
+    });
+  }
+
   // タブ切替
   document.querySelectorAll('.tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -1025,8 +1171,9 @@ function bindUI() {
   }
   if (btnDailyPlay) {
     btnDailyPlay.addEventListener('click', () => {
-      state.dailyPlaying = !state.dailyPlaying;
-      if (state.dailyPlaying) {
+      if (!state.dailyPlaying) {
+        stopMainPlay();
+        state.dailyPlaying = true;
         btnDailyPlay.textContent = '⏸ 日別停止';
         const sched = getActiveDailySchedule();
         if (state.dailySession === 0 || state.dailySession >= sched.total_sessions) setDailySession(1);
@@ -1039,18 +1186,13 @@ function bindUI() {
           }
         }, 1250);
       } else {
-        btnDailyPlay.textContent = '▶ 日別打設再生';
-        clearInterval(state.dailyTimer);
+        stopDailyPlay();
       }
     });
   }
   if (btnDailyReset) {
     btnDailyReset.addEventListener('click', () => {
-      if (state.dailyPlaying) {
-        state.dailyPlaying = false;
-        clearInterval(state.dailyTimer);
-        if (btnDailyPlay) btnDailyPlay.textContent = '▶ 日別打設再生';
-      }
+      stopDailyPlay();
       setDailySession(0);
     });
   }
