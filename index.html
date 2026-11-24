@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DOBOKU WORKS by minamo｜土木×IT — 3D/4D シミュレーション ＆ インフラ可視化デモ</title>
-  <meta name="description" content="minamo｜土木×IT による土木 3D/4D シミュレーション＆構造力学の個人技術デモアーカイブ。L型擁壁リアルタイム安定計算・河川堤防4大決壊・少数鈑桁送り出し架設・都市地下解剖キューブ・砂防堰堤をブラウザで直接操作可能。制作解説は note で発信中。" />
+  <meta name="description" content="minamo｜土木×IT による土木 3D/4D シミュレーション＆構造力学の個人技術デモアーカイブ。L型擁壁リアルタイム安定計算・河川堤防4大決壊・少数鈑桁送り出し架設・都市地下解剖キューブ・砂防堰堤をブラウザで直接操作可能。" />
   <meta property="og:title" content="DOBOKU WORKS by minamo｜土木×IT — 土木 3D/4D ＆ インフラ可視化デモ" />
   <meta property="og:description" content="ブラウザを開くだけで誰でも操作できる土木施工4Dシミュレーション＆力学可視化Webビューア集（minamo｜土木×IT）。" />
   <meta property="og:type" content="website" />
@@ -13,20 +13,19 @@
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:site" content="@doboku_works" />
-  <meta name="twitter:creator" content="@doboku_works" />
   <meta name="twitter:title" content="DOBOKU WORKS by minamo｜土木×IT — 土木 3D/4D 技術デモ" />
   <meta name="twitter:description" content="土木の構造・施工手順と簡易力学計算をブラウザで直接操作できる3D/4D技術デモ＆インフラアート集。" />
   <meta name="twitter:image" content="https://doboku-works.github.io/assets/brand/ogp.jpg" />
+  <link rel="icon" type="image/svg+xml" href="./assets/brand/logo.svg" />
   <link rel="icon" type="image/png" href="./assets/brand/favicon.png" />
-  <link rel="apple-touch-icon" href="./assets/brand/avatar.jpg" />
+  <link rel="apple-touch-icon" href="./assets/brand/favicon.png" />
   <link rel="stylesheet" href="./assets/style.css" />
 </head>
 <body>
   <header class="site-header">
     <div class="container header-inner">
       <a href="#top" class="brand">
-        <img src="./assets/brand/avatar.jpg" alt="minamo（DOBOKU WORKS）アイコン" class="brand-avatar" width="38" height="38" />
+        <img src="./assets/brand/logo.svg" alt="DOBOKU WORKS ロゴ" class="brand-mark" width="38" height="38" />
         <div>
           <span class="brand-name">DOBOKU WORKS</span>
           <span class="brand-sub">by minamo｜土木×IT — 3D/4D &amp; FEM Demo</span>
@@ -35,8 +34,7 @@
       <nav class="nav-links">
         <a href="#works">3Dデモ体験</a>
         <a href="#themes">研究テーマ</a>
-        <a href="https://note.com/doboku_works" target="_blank" rel="noopener noreferrer" class="nav-note">note ↗</a>
-        <a href="https://x.com/doboku_works" target="_blank" rel="noopener noreferrer">X ↗</a>
+        <a href="#stack">技術構成</a>
         <a href="#about" class="nav-cta">minamo について</a>
       </nav>
     </div>
@@ -47,48 +45,69 @@
     <section class="hero">
       <div class="hero-grid-bg" aria-hidden="true"></div>
       <div class="container">
-        <div class="hero-banner-card">
-          <picture>
-            <source srcset="./assets/brand/banner.webp" type="image/webp" />
-            <img src="./assets/brand/banner.jpg" alt="DOBOKU WORKS（minamo｜土木×IT）ヘッダーバナー" class="hero-banner-img" width="1024" height="341" />
-          </picture>
-          <div class="hero-banner-fade" aria-hidden="true"></div>
-          <div class="hero-banner-profile">
-            <img src="./assets/brand/avatar.jpg" alt="minamo プロフィールアイコン" class="hero-profile-avatar" width="68" height="68" />
-            <div class="hero-profile-meta">
-              <span class="hero-profile-name">minamo｜土木×IT</span>
-              <span class="hero-profile-tag">DOBOKU WORKS — 土木 3D / 4D ＆ 構造力学デモ</span>
+        <div class="hero-layout">
+          <div class="hero-inner">
+            <div class="hero-pill">⚡ 全5作品 ブラウザで直接操作可能（インストール不要・WebGL）</div>
+            <h1>土木の構造と施工を、<br><span class="grad-text">動く 3D / 4D と力学</span>で可視化する。</h1>
+            <p class="hero-lead">
+              L型擁壁の0msリアルタイム安定計算＆主鉄筋透視、河川堤防の4大決壊メカニズム（2D浸透流・円弧すべり・パイピング噴砂・洗掘）、都市地下34mの5層インフラ解剖ジオラマ、合理化少数鈑桁橋の合成床版一体送り出し＆1D連続梁FEMたわみ、砂防堰堤の打設割・段階水替えまで。
+              「現場の施工・構造イメージ」と「コード駆動のインタラクティブWeb 3D」を掛け合わせた可視化デモ＆インフラアートを、<strong>minamo（土木×IT）</strong>の個人技術検証として公開しています。
+            </p>
+            <div class="hero-actions">
+              <a href="#works" class="btn btn-primary">🚀 インタラクティブ 3D デモを触る</a>
+              <a href="https://github.com/doboku-works" target="_blank" rel="noopener noreferrer" class="btn btn-ghost">GitHub ↗</a>
+            </div>
+            <div class="hero-stats">
+              <div class="stat">
+                <span class="stat-val">5 Demos</span>
+                <span class="stat-label">WebGL 実機体験可能</span>
+              </div>
+              <div class="stat">
+                <span class="stat-val">0ms計算 + 4D</span>
+                <span class="stat-label">安定照査・FEM・工程連動</span>
+              </div>
+              <div class="stat">
+                <span class="stat-val">ブラウザ完結</span>
+                <span class="stat-label">専用CAD不要でPC/スマホ閲覧</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="hero-inner">
-          <div class="hero-pill">⚡ 全作品 ブラウザで直接グルグル操作可能（インストール不要・WebGL）</div>
-          <h1>土木の構造と施工を、<br><span class="grad-text">動く 3D / 4D と力学</span>で可視化する。</h1>
-          <p class="hero-lead">
-            L型擁壁の0msリアルタイム安定計算＆主鉄筋透視、河川堤防の4大決壊メカニズム（2D浸透流・円弧すべり・パイピング噴砂・洗掘）、都市地下34mの5層インフラ解剖ジオラマ、合理化少数鈑桁橋の合成床版一体送り出し＆1D連続梁FEMたわみ、砂防堰堤の打設割・段階水替えまで。
-            「現場の施工・構造イメージ」と「コード駆動のインタラクティブWeb 3D」を掛け合わせた可視化デモ＆インフラアートを、<strong>minamo（土木×IT）</strong>の個人技術検証として公開しています。
-          </p>
-          <div class="hero-actions">
-            <a href="#works" class="btn btn-primary">🚀 インタラクティブ 3D デモを触る</a>
-            <a href="https://note.com/doboku_works" target="_blank" rel="noopener noreferrer" class="btn btn-note">📝 note で記事を読む ↗</a>
-            <a href="https://x.com/doboku_works" target="_blank" rel="noopener noreferrer" class="btn btn-ghost">𝕏 @doboku_works ↗</a>
-            <a href="https://github.com/doboku-works" target="_blank" rel="noopener noreferrer" class="btn btn-ghost">GitHub ↗</a>
-          </div>
-        <div class="hero-stats">
-          <div class="stat">
-            <span class="stat-val">5 Demos</span>
-            <span class="stat-label">WebGL 実機体験可能</span>
-          </div>
-          <div class="stat">
-            <span class="stat-val">0ms計算 + 4D</span>
-            <span class="stat-label">安定照査・FEM・工程連動</span>
-          </div>
-          <div class="stat">
-            <span class="stat-val">ブラウザ完結</span>
-            <span class="stat-label">専用CAD不要でPC/スマホ閲覧</span>
-          </div>
-        </div>
+          <aside class="hero-showcase" aria-label="3Dデモ クイックプレビュー">
+            <div class="showcase-head">
+              <div class="showcase-dots" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </div>
+              <span class="showcase-title">LIVE WEBGL DEMOS</span>
+              <span class="showcase-hint">クリックで即起動</span>
+            </div>
+            <div class="showcase-grid">
+              <a href="./works/retaining-wall/viewer/index.html" class="showcase-tile">
+                <img src="./assets/thumbs/retaining_wall.jpg" alt="L型擁壁 リアルタイム3D安定計算" />
+                <span class="showcase-caption">L型擁壁 0ms安定計算</span>
+                <span class="showcase-go">▶</span>
+              </a>
+              <a href="./works/river-levee/viewer/index.html" class="showcase-tile">
+                <img src="./assets/thumbs/river_levee.jpg" alt="河川堤防 4大決壊メカニズム" />
+                <span class="showcase-caption">河川堤防 4大決壊</span>
+                <span class="showcase-go">▶</span>
+              </a>
+              <a href="./works/urban-cube/viewer/index.html" class="showcase-tile">
+                <img src="./assets/thumbs/urban_cube.jpg" alt="都市地下解剖キューブ" />
+                <span class="showcase-caption">都市地下解剖キューブ</span>
+                <span class="showcase-go">▶</span>
+              </a>
+              <a href="./works/bridge-launching/viewer/index.html" class="showcase-tile">
+                <img src="./assets/thumbs/bridge_launch.jpg" alt="少数鈑桁橋 送り出し架設 4D/FEM" />
+                <span class="showcase-caption">少数鈑桁 送り出しFEM</span>
+                <span class="showcase-go">▶</span>
+              </a>
+            </div>
+            <a href="#works" class="showcase-foot">
+              <span>全5作品（大沢川砂防堰堤 4D を含む）を一覧で見る</span>
+              <span aria-hidden="true">↓</span>
+            </a>
+          </aside>
         </div>
       </div>
     </section>
@@ -291,12 +310,12 @@
     <section id="about" class="section section-alt">
       <div class="container contact-box">
         <div class="about-main">
-          <img src="./assets/brand/avatar.jpg" alt="minamo（土木×IT）アイコン" class="about-avatar" width="76" height="76" />
+          <img src="./assets/brand/logo.svg" alt="DOBOKU WORKS ロゴ" class="about-mark" width="64" height="64" />
           <div>
             <span class="eyebrow">ABOUT CREATOR &amp; POLICY</span>
             <h2>minamo（土木×IT）について・このサイトのポリシー</h2>
             <p class="contact-desc">
-              <strong>minamo｜土木×IT</strong> が運営する「DOBOKU WORKS」の個人技術検証アーカイブです。土木工学・施工計画・構造力学と WebGL（Three.js）・Python を掛け合わせた 3D/4D シミュレーションやインフラアートを制作し、最新の開発動画は <strong>X（@doboku_works）</strong>、制作の工夫や技術解説は <strong>note</strong> で発信しています。
+              <strong>minamo｜土木×IT</strong> が運営する「DOBOKU WORKS」の個人技術検証アーカイブです。土木工学・施工計画・構造力学と WebGL（Three.js）・Python を掛け合わせた 3D/4D シミュレーションやインフラアートを制作・公開しています。
             </p>
             <p class="safety-note">
               ※本サイトに掲載しているすべての3Dモデル・地形・構造物諸元・力学データは、個人の学習・技術検証およびメカニズム理解のために独自設計した<strong>完全架空のオリジナルモデル（簡易シミュレーション）</strong>であり、実務設計や防災・ハザード評価を目的としたものではありません。また、特定の実在工事・企業・発注者の機密情報は一切含まない非営利の個人デモサイトです。
@@ -304,8 +323,6 @@
           </div>
         </div>
         <div class="contact-actions">
-          <a href="https://note.com/doboku_works" target="_blank" rel="noopener noreferrer" class="btn btn-note">📝 note で記事を読む ↗</a>
-          <a href="https://x.com/doboku_works" target="_blank" rel="noopener noreferrer" class="btn btn-ghost">𝕏 X (@doboku_works) ↗</a>
           <a href="https://github.com/doboku-works" target="_blank" rel="noopener noreferrer" class="btn btn-primary">GitHub (doboku-works) ↗</a>
         </div>
       </div>
@@ -316,8 +333,6 @@
     <div class="container footer-inner">
       <span>© 2026 minamo｜土木×IT (DOBOKU WORKS) — Civil Engineering 3D/4D Tech Demo</span>
       <div class="footer-links">
-        <a href="https://note.com/doboku_works" target="_blank" rel="noopener noreferrer">note ↗</a>
-        <a href="https://x.com/doboku_works" target="_blank" rel="noopener noreferrer">X (@doboku_works) ↗</a>
         <a href="https://github.com/doboku-works" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
         <a href="#works">3Dデモ一覧</a>
       </div>
