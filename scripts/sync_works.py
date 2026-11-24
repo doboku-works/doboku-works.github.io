@@ -108,7 +108,7 @@ def sync_works() -> None:
                 html = html.replace("../libs/three/", "../../../libs/three/")
                 html = re.sub(
                     r'<link\s+rel="icon"[^\n]*',
-                    '<link rel="icon" type="image/png" href="../../../assets/brand/favicon.png" />',
+                    '<link rel="icon" type="image/png" href="../../../assets/brand/favicon.png?v=20261124-2" />',
                     html,
                     count=1,
                 )
