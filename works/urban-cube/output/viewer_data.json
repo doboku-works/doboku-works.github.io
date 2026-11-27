@@ -1,45 +1,46 @@
 {
   "project": {
-    "name": "TOKYO UNDERGROUND — 都市地下解剖キューブ・ジオラマ",
-    "subtitle": "36m×36m×深さ34m 5層インフラ断面（都市高速高架橋・共同溝＆ライフライン・5層地質・場所打ち杭・開削地下鉄・大深度シールド掘進）",
-    "cube_size_m": 36.0,
-    "cube_half_m": 18.0,
-    "depth_m": 34.0
+    "name": "TOKYO METRO-DISTRICT 2030 — 広域都市デザイン ＆ 大深度インフラ解剖3D",
+    "subtitle": "96m×96m×深さ44m 広域都市モデル（ウォーカブルLRT・親水グリーンインフラ・段階的スカイライン・無電柱化・地下駅・流域治水大深度調節池・TBM）",
+    "cube_size_m": 96.0,
+    "cube_half_m": 48.0,
+    "depth_m": 44.0,
+    "deep_underground_law_m": -40.0
   },
   "strata": [
     {
       "id": "B",
       "name": "盛土・埋土 (B)",
       "y_top": 0.0,
-      "y_bot": -2.4,
+      "y_bot": -2.6,
       "n_value": "N = 3〜8",
-      "desc": "都市造成盛土・砕石・舗装路盤",
+      "desc": "都市造成盛土・透水性路盤・C.C.BOX埋設帯",
       "color": [
-        128,
-        108,
-        86
+        132,
+        112,
+        90
       ]
     },
     {
       "id": "Ac",
       "name": "沖積粘性土 (Ac)",
-      "y_top": -2.4,
-      "y_bot": -10.5,
+      "y_top": -2.6,
+      "y_bot": -12.0,
       "n_value": "N = 2〜5 (軟弱)",
-      "desc": "有楽町層上部・軟弱シルト粘土（杭基礎貫通層）",
+      "desc": "有楽町層上部・軟弱シルト粘土（杭基礎貫通・共同溝・貯留槽帯）",
       "color": [
-        108,
-        120,
-        122
+        98,
+        114,
+        118
       ]
     },
     {
       "id": "As",
       "name": "沖積砂層 (As)",
-      "y_top": -10.5,
-      "y_bot": -16.8,
+      "y_top": -12.0,
+      "y_bot": -18.5,
       "n_value": "N = 15〜25",
-      "desc": "細〜中粒砂層（浅層開削地下鉄 設置帯）",
+      "desc": "細〜中粒砂層（開削RCボックス地下鉄駅 設置帯）",
       "color": [
         174,
         152,
@@ -49,146 +50,375 @@
     {
       "id": "Dc",
       "name": "洪積粘土・ローム (Dc)",
-      "y_top": -16.8,
-      "y_bot": -24.5,
+      "y_top": -18.5,
+      "y_bot": -27.0,
       "n_value": "N = 22〜38",
-      "desc": "硬質粘性土層（大深度シールド掘進帯）",
+      "desc": "硬質粘性土層（大深度鉄道シールドTBM 掘進帯）",
       "color": [
-        146,
-        102,
-        78
+        144,
+        100,
+        76
       ]
     },
     {
       "id": "Dg",
       "name": "東京礫層 (Dg 支持層)",
-      "y_top": -24.5,
-      "y_bot": -34.0,
+      "y_top": -27.0,
+      "y_bot": -36.5,
       "n_value": "N ≥ 50 (強固)",
-      "desc": "高架橋 場所打ちRC杭の支持層・砂礫玉石層",
+      "desc": "高架橋・高層タワー場所打ちRC杭の支持層・玉石砂礫層",
       "color": [
         86,
         82,
+        78
+      ]
+    },
+    {
+      "id": "Km",
+      "name": "上総層群・固結泥岩 (Km 大深度)",
+      "y_top": -36.5,
+      "y_bot": -44.0,
+      "n_value": "N ≥ 60 (大深度)",
+      "desc": "GL-40m大深度地下法対象帯・流域治水 大深度地下調節池",
+      "color": [
+        62,
+        68,
         78
       ]
     }
   ],
   "infra_depths": [
     {
-      "name": "都市高速 鋼箱桁高架橋",
-      "gl": "+8.6 m",
-      "color": "#e2e8f0"
+      "name": "都市高速 デザイン高架橋",
+      "gl": "+10.4 m",
+      "color": "#e2e8f0",
+      "cam": "iso"
     },
     {
-      "name": "ガス・上水道本管",
-      "gl": "-1.6〜-2.1 m",
-      "color": "#38bdf8"
+      "name": "ペデストリアンデッキ（歩車分離）",
+      "gl": "+5.6 m",
+      "color": "#f59e0b",
+      "cam": "walkable"
     },
     {
-      "name": "電力・通信 共同溝",
-      "gl": "-3.5 m",
-      "color": "#f97316"
+      "name": "LRTトランジットモール ＆ 親水運河",
+      "gl": "0.0〜-2.2 m",
+      "color": "#10b981",
+      "cam": "waterfront"
     },
     {
-      "name": "下水道幹線 ＆ マンホール",
-      "gl": "-4.6 m",
-      "color": "#94a3b8"
+      "name": "電線共同溝 C.C.BOX（無電柱化）",
+      "gl": "-1.5 m",
+      "color": "#facc15",
+      "cam": "lifeline"
     },
     {
-      "name": "開削RCボックス地下鉄",
-      "gl": "-11.0 m",
-      "color": "#22c55e"
+      "name": "電力・通信2連共同溝 ＆ 上下水・ガス",
+      "gl": "-2.0〜-6.8 m",
+      "color": "#f97316",
+      "cam": "lifeline"
     },
     {
-      "name": "大深度シールド (Φ7.2m)",
-      "gl": "-24.0 m",
-      "color": "#ef4444"
+      "name": "公園地下 雨水貯留浸透槽（流域治水）",
+      "gl": "-2.2〜-6.2 m",
+      "color": "#06b6d4",
+      "cam": "waterfront"
     },
     {
-      "name": "場所打ちRC杭 先端根入れ",
-      "gl": "-28.5 m (Dg層)",
-      "color": "#eab308"
+      "name": "開削RC地下鉄駅 ＆ 駅直結吹抜",
+      "gl": "-8.8〜-16.2 m",
+      "color": "#22c55e",
+      "cam": "subway"
+    },
+    {
+      "name": "大深度シールド鉄道 ＆ 稼働TBM (Φ7.6m)",
+      "gl": "-26.5 m",
+      "color": "#ef4444",
+      "cam": "tbm"
+    },
+    {
+      "name": "場所打ちRC杭 先端定着 (Dg支持層)",
+      "gl": "-32.5 m",
+      "color": "#eab308",
+      "cam": "low"
+    },
+    {
+      "name": "流域治水 大深度地下調節池 (Φ9.2m)",
+      "gl": "-37.2 m (GL-40m帯)",
+      "color": "#3b82f6",
+      "cam": "flood"
     }
   ],
+  "policy_references": [
+    {
+      "id": "compact_tod",
+      "title": "コンパクト・プラス・ネットワーク / TOD",
+      "source": "国土交通白書（令和6〜8年版）",
+      "detail": "LRTトランジットモール・開削地下鉄駅・ペデストリアンデッキを駅前複合タワーと立体結節"
+    },
+    {
+      "id": "walkable",
+      "title": "ウォーカブル ＆ ほこみち道路空間再編",
+      "source": "国交省 ストリートデザイン指針 / ほこみち制度",
+      "detail": "車線集約＋自転車レーン＋歩道幅4.6m以上＋オープンカフェ広場＋2層歩車分離"
+    },
+    {
+      "id": "green_infra",
+      "title": "グリーンインフラ ＆ 流域治水（Eco-DRR）",
+      "source": "グリーンインフラ推進戦略2030 / 流域治水",
+      "detail": "緑視率25%超の多層植栽・芝生LRT軌道・雨庭・公園地下雨水貯留槽→螺旋立坑→大深度地下調節池"
+    },
+    {
+      "id": "landscape",
+      "title": "都市景観・スカイライン ＆ 光のマスタープラン",
+      "source": "景観形成ガイドライン / 無電柱化推進計画",
+      "detail": "完全無電柱化・水辺へ低くなる段階的スカイライン・基壇部ヒューマンスケール・セットバック・品格ある夜間景観"
+    }
+  ],
+  "optimization": {
+    "overall_score": 99,
+    "district_area_m2": 9216,
+    "building_count": 9,
+    "tree_count": 38,
+    "pile_count": 28,
+    "metrics": [
+      {
+        "id": "green_view",
+        "label": "推定 緑視率（グリーンインフラ）",
+        "value": "32.7%",
+        "target": "基準 ≥ 25%（国交省指針）",
+        "score": 100,
+        "status": "PASS",
+        "source": "ストリートデザイン指針 / 緑の基本計画"
+      },
+      {
+        "id": "walkable",
+        "label": "ウォーカブル・公開空地比率",
+        "value": "39.9%",
+        "target": "ほこみち歩道幅 4.6m+ / 2層歩車分離",
+        "score": 100,
+        "status": "PASS",
+        "source": "国土交通白書 / ほこみち制度"
+      },
+      {
+        "id": "skyline",
+        "label": "段階的スカイライン勾配",
+        "value": "北36m → 水辺16m",
+        "target": "水辺眺望開放・セットバック完了",
+        "score": 96,
+        "status": "PASS",
+        "source": "景観形成ガイドライン（国交省）"
+      },
+      {
+        "id": "flood",
+        "label": "流域治水 立体雨水貯留容量",
+        "value": "5,725 m³",
+        "target": "公園槽 655m³ + 大深度 5,070m³",
+        "score": 98,
+        "status": "PASS",
+        "source": "流域治水 / 大深度地下利用(GL-40m)"
+      },
+      {
+        "id": "no_pole",
+        "label": "無電柱化率（C.C.BOX収容）",
+        "value": "100%",
+        "target": "地上電柱 0本 / 共同溝地中化",
+        "score": 100,
+        "status": "PASS",
+        "source": "無電柱化推進計画 / 防災強靭化"
+      },
+      {
+        "id": "clash",
+        "label": "地下インフラ 3D無干渉検証",
+        "value": "干渉 0件",
+        "target": "全15組 最小離隔 0.40m",
+        "score": 100,
+        "status": "PASS",
+        "source": "大深度・浅層立体クリアランス検算"
+      }
+    ],
+    "clearances": [
+      {
+        "pair": "subway_station_box vs viaduct_piles_1",
+        "clearance_m": 2.05
+      },
+      {
+        "pair": "subway_station_box vs viaduct_piles_2",
+        "clearance_m": 2.05
+      },
+      {
+        "pair": "subway_station_box vs shield_north",
+        "clearance_m": 6.0
+      },
+      {
+        "pair": "subway_station_box vs shield_south_tbm",
+        "clearance_m": 6.5
+      },
+      {
+        "pair": "subway_station_box vs culvert_2cell",
+        "clearance_m": 3.4
+      },
+      {
+        "pair": "subway_station_box vs rainwater_tank",
+        "clearance_m": 8.6
+      },
+      {
+        "pair": "subway_station_box vs ccbox_no_pole",
+        "clearance_m": 7.03
+      },
+      {
+        "pair": "culvert_2cell vs ccbox_no_pole",
+        "clearance_m": 0.4
+      },
+      {
+        "pair": "culvert_2cell vs sewer_trunk",
+        "clearance_m": 0.4
+      },
+      {
+        "pair": "culvert_2cell vs rainwater_tank",
+        "clearance_m": 2.7
+      },
+      {
+        "pair": "shield_north vs shield_south_tbm",
+        "clearance_m": 11.9
+      },
+      {
+        "pair": "shield_north vs viaduct_piles_1",
+        "clearance_m": 6.05
+      },
+      {
+        "pair": "shield_north vs viaduct_piles_2",
+        "clearance_m": 6.05
+      },
+      {
+        "pair": "shield_south_tbm vs deep_flood_reservoir",
+        "clearance_m": 13.79
+      },
+      {
+        "pair": "rainwater_tank vs deep_flood_reservoir",
+        "clearance_m": 26.62
+      }
+    ]
+  },
   "labels": [
     {
       "id": "VIADUCT",
       "layer": 1,
-      "text": "都市高速 鋼箱桁高架橋 (GL+8.6m)",
+      "text": "首都高スタイル鋼箱桁高架橋 (+10.4m)",
+      "pos": [
+        -16.0,
+        17.5,
+        -18.0
+      ]
+    },
+    {
+      "id": "TOWER",
+      "layer": 2,
+      "text": "段階的スカイライン建築群 (最高46m)",
+      "pos": [
+        -35.0,
+        49.0,
+        -36.5
+      ]
+    },
+    {
+      "id": "CAFE_FLOWER",
+      "layer": 2,
+      "text": "ガラス張り花屋 ＆ おしゃれカフェ併設",
+      "pos": [
+        -18.0,
+        7.2,
+        8.5
+      ]
+    },
+    {
+      "id": "PEDDECK",
+      "layer": 2,
+      "text": "ペデストリアンデッキ (+5.6m)",
       "pos": [
         0.0,
-        13.5,
-        0.0
+        8.6,
+        2.5
+      ]
+    },
+    {
+      "id": "LRT",
+      "layer": 2,
+      "text": "LRT芝生軌道 トランジットモール (左側通行)",
+      "pos": [
+        -3.0,
+        5.2,
+        16.5
+      ]
+    },
+    {
+      "id": "WATERFRONT",
+      "layer": 2,
+      "text": "親水運河・ガラス水辺カフェ・ほこみち",
+      "pos": [
+        29.0,
+        4.8,
+        34.0
+      ]
+    },
+    {
+      "id": "RAIN_TANK",
+      "layer": 3,
+      "text": "公園地下 雨水貯留浸透槽 (-4.2m)",
+      "pos": [
+        28.0,
+        -3.5,
+        22.0
       ]
     },
     {
       "id": "CULVERT",
       "layer": 3,
-      "text": "電力・通信 2連共同溝 (GL-3.5m)",
+      "text": "無電柱化 C.C.BOX ＆ 2連共同溝 (-3.9m)",
       "pos": [
-        18.2,
-        -3.2,
-        10.2
-      ]
-    },
-    {
-      "id": "WATER",
-      "layer": 3,
-      "text": "上水道本管(青) / ガス本管(黄)",
-      "pos": [
-        -15.0,
-        -1.8,
-        -10.0
-      ]
-    },
-    {
-      "id": "SEWER",
-      "layer": 3,
-      "text": "下水道幹線 ＆ マンホール立坑 (GL-4.6m)",
-      "pos": [
-        -14.8,
-        -4.6,
-        17.8
+        48.2,
+        -3.9,
+        12.5
       ]
     },
     {
       "id": "SUBWAY",
       "layer": 4,
-      "text": "開削RCボックス地下鉄 (GL-11.0m)",
+      "text": "開削RC地下駅 ＆ 駅直結吹抜 (-12.5m)",
       "pos": [
-        0.0,
-        -7.2,
-        18.2
+        -3.0,
+        -9.2,
+        48.2
       ]
     },
     {
       "id": "PILES",
       "layer": 4,
-      "text": "高架橋 場所打ちRC杭 (東京礫層 GL-28.5m支持)",
+      "text": "場所打ちRC杭28本 (Dg層 -32.5m定着)",
       "pos": [
-        10.5,
-        -18.5,
-        2.5
+        11.5,
+        -22.0,
+        -18.0
       ]
     },
     {
       "id": "TBM",
       "layer": 5,
-      "text": "大深度シールドマシン TBM掘進中 (Φ7.2m / GL-24.0m)",
+      "text": "稼働中シールドマシン TBM (Φ7.6m / -26.5m)",
       "pos": [
-        10.5,
-        -20.2,
-        10.5
+        27.0,
+        -22.2,
+        14.0
       ]
     },
     {
-      "id": "SHIELD_N",
+      "id": "FLOOD",
       "layer": 5,
-      "text": "完成シールドトンネル 地下鉄走行 (Φ7.2m / GL-24.0m)",
+      "text": "流域治水 大深度地下調節池 ＆ 螺旋立坑 (-37.2m)",
       "pos": [
-        18.4,
-        -19.8,
-        -10.0
+        16.0,
+        -32.0,
+        36.0
       ]
     }
   ]

@@ -26,7 +26,7 @@ WORKS = [
         "slug": "retaining-wall",
         "src_dir": PROJECTS_ROOT / "l-retaining-wall-3d",
         "output_files": [],
-        "thumb_src": PROJECTS_ROOT / "l-retaining-wall-3d" / "output" / "previews" / "thumb_standard_iso.png",
+        "thumb_src": PROJECTS_ROOT / "l-retaining-wall-3d" / "output" / "previews" / "thumb_v2_large_block.png",
         "thumb_out": "retaining_wall.jpg",
     },
     {

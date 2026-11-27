@@ -1,5 +1,13 @@
 import * as THREE from 'three';
-import { DEFAULT_PARAMS, PRESETS, computeWallStability } from './engine.js';
+import {
+  WALL_TYPES,
+  DEFAULT_PARAMS,
+  LARGE_BLOCK_DEFAULTS,
+  PRESETS,
+  BLOCK_PRESETS,
+  getPresetsForWallType,
+  computeWallStability,
+} from './engine.js';
 import { RetainingWallScene3D } from './scene3d.js';
 
 // ============================================================================
@@ -14,6 +22,12 @@ const PARAM_LIMITS = {
   t_top: [0.25, 0.60],
   t_stem: [0.30, 0.85],
   t_base: [0.30, 0.85],
+  embedDepth: [0.30, 1.20],
+  frontSlope: [0.20, 0.55],
+  blockDepth: [0.65, 2.00],
+  blockDepthTop: [0.65, 2.00],
+  courseHeight: [0.50, 1.00],
+  muJoint: [0.40, 0.75],
   betaDeg: [0, 25],
   qSurcharge: [0, 30],
   waterRatio: [0, 0.90],
@@ -80,16 +94,50 @@ function isMobileView() {
 }
 
 function sanitizeParams(raw, changedKey = null) {
-  const p = { ...DEFAULT_PARAMS, ...raw };
+  const wallType =
+    raw?.wallType === WALL_TYPES.LARGE_BLOCK ? WALL_TYPES.LARGE_BLOCK : WALL_TYPES.L_WALL;
+  const defaults = wallType === WALL_TYPES.LARGE_BLOCK ? LARGE_BLOCK_DEFAULTS : DEFAULT_PARAMS;
+  const p = { ...defaults, ...raw, wallType };
 
   for (const [key, [min, max]] of Object.entries(PARAM_LIMITS)) {
     if (typeof p[key] === 'number' && Number.isFinite(p[key])) {
       p[key] = clamp(p[key], min, max);
-    } else if (typeof DEFAULT_PARAMS[key] === 'number') {
-      p[key] = DEFAULT_PARAMS[key];
+    } else if (typeof defaults[key] === 'number') {
+      p[key] = defaults[key];
     }
   }
   p.hasKey = Boolean(p.hasKey);
+  p.hasInterlock = p.hasInterlock === undefined ? true : Boolean(p.hasInterlock);
+  p.fillConcrete = Boolean(p.fillConcrete);
+  p.embedDepth = clamp(
+    Number(p.embedDepth ?? defaults.embedDepth ?? 0.50) || 0.50,
+    PARAM_LIMITS.embedDepth[0],
+    Math.min(PARAM_LIMITS.embedDepth[1], Math.max(PARAM_LIMITS.embedDepth[0], p.H - 0.8))
+  );
+
+  if (wallType === WALL_TYPES.LARGE_BLOCK) {
+    p.t_base = clamp(p.t_base, PARAM_LIMITS.t_base[0], Math.min(PARAM_LIMITS.t_base[1], p.H - 0.5));
+    const rawDb =
+      changedKey === 'blockDepth'
+        ? p.blockDepth
+        : raw?.blockDepth !== undefined
+          ? raw.blockDepth
+          : raw?.blockDepthTop !== undefined
+            ? raw.blockDepthTop
+            : p.blockDepth;
+    p.blockDepth = clamp(Number(rawDb) || LARGE_BLOCK_DEFAULTS.blockDepth, PARAM_LIMITS.blockDepth[0], PARAM_LIMITS.blockDepth[1]);
+    if (p.B < p.blockDepth + 0.30) {
+      if (changedKey === 'B') {
+        p.blockDepth = clamp(p.B - 0.30, PARAM_LIMITS.blockDepth[0], PARAM_LIMITS.blockDepth[1]);
+        p.B = Math.max(p.B, p.blockDepth + 0.30);
+      } else {
+        p.B = clamp(p.blockDepth + 0.30, PARAM_LIMITS.B[0], PARAM_LIMITS.B[1]);
+        p.blockDepth = Math.min(p.blockDepth, p.B - 0.30);
+      }
+    }
+    p.blockDepthTop = p.blockDepth;
+    return p;
+  }
 
   // たて壁天端厚 <= たて壁基部厚 を保証
   const defaultTop = typeof DEFAULT_PARAMS.t_top === 'number' ? DEFAULT_PARAMS.t_top : 0.30;
@@ -121,11 +169,13 @@ function sanitizeParams(raw, changedKey = null) {
 
 function extractPresetParams(preset) {
   if (!preset) return { ...DEFAULT_PARAMS };
+  const isBlock = preset.params?.wallType === WALL_TYPES.LARGE_BLOCK || String(preset.id || '').startsWith('block_');
+  const base = isBlock ? LARGE_BLOCK_DEFAULTS : DEFAULT_PARAMS;
   if (preset.params && typeof preset.params === 'object') {
-    return { ...DEFAULT_PARAMS, ...preset.params };
+    return { ...base, ...preset.params };
   }
-  const merged = { ...DEFAULT_PARAMS };
-  for (const key of Object.keys(DEFAULT_PARAMS)) {
+  const merged = { ...base };
+  for (const key of Object.keys(base)) {
     if (key in preset) {
       merged[key] = preset[key];
     }
@@ -135,9 +185,9 @@ function extractPresetParams(preset) {
 
 function getPresetBadgeTone(preset) {
   const id = String(preset?.id ?? '');
-  if (id === 'standard') return 'tone-ok';
-  if (id === 'waterlog') return 'tone-water';
-  if (id === 'seismic') return 'tone-seismic';
+  if (id === 'standard' || id === 'block_standard') return 'tone-ok';
+  if (id === 'waterlog' || id === 'block_waterlog') return 'tone-water';
+  if (id === 'seismic' || id === 'block_joint_slide') return 'tone-seismic';
   return 'tone-danger';
 }
 
@@ -145,10 +195,10 @@ function normalizeFailureHeadline(result) {
   const overall = result?.overall ?? {};
   if (overall.ok) return '全項目 OK（安定）';
 
-  // engine.js の summaryJa と同一順序（滑動 → 転倒 → 支持力）に統一
   const ngTags = [];
   if (result?.checks?.sliding && !result.checks.sliding.ok) ngTags.push('滑動危険');
   if (result?.checks?.overturning && !result.checks.overturning.ok) ngTags.push('転倒危険');
+  if (result?.checks?.joint?.enabled && !result.checks.joint.ok) ngTags.push('目地ズレ');
   if (result?.checks?.bearing && !result.checks.bearing.ok) ngTags.push('支持力不足');
 
   if (ngTags.length > 0) {
@@ -156,6 +206,7 @@ function normalizeFailureHeadline(result) {
   }
 
   const pf = overall.primaryFailure;
+  if (pf === 'joint_sliding') return 'NG：目地ズレ危険';
   if (pf === 'sliding') return 'NG：滑動危険';
   if (pf === 'overturning') return 'NG：転倒危険';
   if (pf === 'bearing') return 'NG：支持力不足';
@@ -164,24 +215,32 @@ function normalizeFailureHeadline(result) {
 
 function formatOverallSummary(result) {
   const overall = result?.overall ?? {};
+  const isBlock = result?.wallType === WALL_TYPES.LARGE_BLOCK;
   if (overall.ok) {
+    if (isBlock) {
+      const n = result.geom?.nCourses ?? 7;
+      return result.isSeismic
+        ? `地震時（kh=${fmt(result.params?.kh ?? 0, 2)}）の基礎底面・全${n}段目地とも基準内`
+        : `基礎底面（滑動・転倒・支持力）および全${n}段目地すべて基準内です`;
+    }
     return result.isSeismic
       ? `地震時（kh=${fmt(result.params?.kh ?? 0, 2)}）の滑動・転倒・支持力すべて基準内`
       : '滑動・転倒・支持力のすべてが安全基準を満たしています';
   }
   const raw = String(overall.summaryJa || '').trim();
-  // 見出しと重複する「安定照査 NG（...）：」接頭辞を取り除き、理由を簡潔明瞭に表示
   const stripped = raw.replace(/^安定照査\s*NG（[^）]*）：/, '').trim();
-  return stripped || '赤字の照査項目が基準未達です。底版幅や排水条件を調整してください';
+  return stripped || '赤字の照査項目が基準未達です。断面寸法や排水条件を調整してください';
 }
 
 function normalizeMobileFailureShort(result) {
   if (result?.overall?.ok) return 'OK 安定';
   const pf = result?.overall?.primaryFailure;
+  if (pf === 'joint_sliding') return 'NG 目地';
   if (pf === 'overturning') return 'NG 転倒';
   if (pf === 'sliding') return 'NG 滑動';
   if (pf === 'bearing') return 'NG 支持力';
   if (result?.checks?.overturning && !result.checks.overturning.ok) return 'NG 転倒';
+  if (result?.checks?.joint?.enabled && !result.checks.joint.ok) return 'NG 目地';
   if (result?.checks?.sliding && !result.checks.sliding.ok) return 'NG 滑動';
   if (result?.checks?.bearing && !result.checks.bearing.ok) return 'NG 支持力';
   return 'NG 危険';
@@ -192,13 +251,17 @@ function normalizeMobileFailureShort(result) {
 // ============================================================================
 function cacheDom() {
   const ids = [
-    'canvas3d', 'label-layer', 'topbar', 'panel-left', 'panel-right',
+    'canvas3d', 'label-layer', 'topbar', 'panel-left', 'panel-right', 'brand-sub',
     'btn-toggle-left', 'btn-toggle-right', 'btn-close-left', 'btn-close-right',
     'btn-reset', 'btn-export-png', 'btn-export-png-mobile',
     'mobile-status-pill', 'mobile-status-text',
+    'wall-type-hint', 'label-B', 'label-t_base', 'label-showRebar',
     'preset-list', 'diagram2d',
     'val-H', 'val-B', 'val-B_toe', 'val-t_stem', 'val-t_base',
+    'val-embedDepth', 'badge-embed-state', 'val-visibleH',
     'val-B_heel', 'val-BH_ratio',
+    'val-frontSlope', 'val-blockDepth', 'val-courseHeight', 'val-muJoint',
+    'val-nCourses', 'val-alphaDeg',
     'val-waterRatio', 'val-kh', 'val-qSurcharge', 'val-betaDeg',
     'val-phiDeg', 'val-gammaSoil', 'val-muBase', 'val-qa', 'val-qa-seismic',
     'badge-water-state', 'badge-kh-state',
@@ -207,7 +270,9 @@ function cacheDom() {
     'card-overturning', 'badge-overturning', 'val-e', 'val-e-limit', 'val-fso', 'val-fso-limit',
     'ecc-kern-zone', 'ecc-marker', 'ecc-kern-label', 'sub-overturning',
     'card-bearing', 'badge-bearing', 'val-qmax', 'val-qa-allow', 'val-fsb', 'bar-bearing', 'sub-bearing',
-    'formula-theory-tag', 'kv-ka-label', 'kv-ka-val', 'kv-angles-val', 'kv-heights-val',
+    'card-joint', 'badge-joint', 'val-fsj', 'val-fsj-limit', 'bar-joint', 'mark-joint', 'sub-joint', 'hint-joint',
+    'formula-theory-tag', 'kv-ka-label', 'kv-ka-val', 'kv-angles-label', 'kv-angles-val',
+    'kv-heights-label', 'kv-heights-val',
     'kv-forces-val', 'kv-moments-val', 'kv-ecc-val',
     'live-formulas', 'breakdown-tbody',
   ];
@@ -217,18 +282,25 @@ function cacheDom() {
   dom.rangeInputs = Array.from(document.querySelectorAll('input[type="range"][data-param]'));
   dom.boolInputs = Array.from(document.querySelectorAll('input[type="checkbox"][data-param]'));
   dom.optInputs = Array.from(document.querySelectorAll('input[type="checkbox"][data-opt]'));
+  dom.wallTypeBtns = Array.from(document.querySelectorAll('[data-wall-type]'));
+  dom.wallOnlyEls = Array.from(document.querySelectorAll('[data-wall-only]'));
   dom.ctrlTabs = Array.from(document.querySelectorAll('[data-ctrl-tab]'));
   dom.monTabs = Array.from(document.querySelectorAll('[data-mon-tab]'));
   dom.camBtns = Array.from(document.querySelectorAll('[data-cam]'));
   dom.waterItem = document.querySelector('.slider-item-water');
   dom.seismicItem = document.querySelector('.slider-item-seismic');
+  dom.embedItem = document.querySelector('.slider-item-embed');
 }
 
-function buildPresetButtons() {
-  if (!dom['preset-list'] || !Array.isArray(PRESETS)) return;
+let renderedPresetWallType = null;
+
+function buildPresetButtons(wallType = state.params.wallType) {
+  const list = getPresetsForWallType(wallType);
+  if (!dom['preset-list'] || !Array.isArray(list)) return;
+  renderedPresetWallType = wallType;
   dom['preset-list'].innerHTML = '';
 
-  for (const preset of PRESETS) {
+  for (const preset of list) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'preset-btn';
@@ -251,6 +323,43 @@ function buildPresetButtons() {
     });
 
     dom['preset-list'].appendChild(btn);
+  }
+}
+
+function syncWallTypeUI(wallType) {
+  const isBlock = wallType === WALL_TYPES.LARGE_BLOCK;
+
+  for (const btn of dom.wallTypeBtns || []) {
+    const active = btn.dataset.wallType === wallType;
+    btn.classList.toggle('is-active', active);
+    btn.setAttribute('aria-selected', String(active));
+  }
+  for (const el of dom.wallOnlyEls || []) {
+    el.hidden = el.dataset.wallOnly !== wallType;
+  }
+
+  if (dom['wall-type-hint']) {
+    dom['wall-type-hint'].textContent = isBlock
+      ? 'プレキャスト段積み＋法勾配・全段目地照査（傾斜背面クーロン／物部岡部）'
+      : '片持ちRC壁＋かかと上土塊重量で土圧に抵抗（仮想背面照査）';
+  }
+  if (dom['label-B']) {
+    dom['label-B'].textContent = isBlock ? '基礎底幅' : '底版全幅';
+  }
+  if (dom['label-t_base']) {
+    dom['label-t_base'].textContent = isBlock ? '基礎コン厚' : '底版厚';
+  }
+  if (dom['label-showRebar']) {
+    dom['label-showRebar'].textContent = isBlock ? '内部構造透視' : '主鉄筋透視';
+  }
+  if (dom['brand-sub']) {
+    dom['brand-sub'].textContent = isBlock
+      ? '道路土工・擁壁工指針 参考｜大型積みブロック擁壁 3D安定・目地照査（学習用簡易モデル）'
+      : '道路土工・擁壁工指針 参考｜L型RC擁壁 リアルタイム3D安定計算（学習用簡易モデル）';
+  }
+
+  if (renderedPresetWallType !== wallType) {
+    buildPresetButtons(wallType);
   }
 }
 
@@ -295,6 +404,8 @@ function syncControlsFromState() {
     }
   }
 
+  syncWallTypeUI(p.wallType);
+
   const hw = p.waterRatio * Math.max(0, p.H - p.t_base);
   const bHeel = Math.max(0, p.B - p.B_toe - p.t_stem);
 
@@ -303,8 +414,38 @@ function syncControlsFromState() {
   dom['val-B_toe'].textContent = `${fmt(p.B_toe, 2)} m`;
   dom['val-t_stem'].textContent = `${fmt(p.t_stem, 2)} m`;
   dom['val-t_base'].textContent = `${fmt(p.t_base, 2)} m`;
+  if (dom['val-embedDepth']) dom['val-embedDepth'].textContent = `${fmt(p.embedDepth, 2)} m`;
+  if (dom['val-visibleH']) dom['val-visibleH'].textContent = `${fmt(Math.max(0, p.H - p.embedDepth), 2)} m`;
+  if (dom['badge-embed-state']) {
+    const meetsMin = p.embedDepth >= 0.50 - 1e-6;
+    const coversBase = p.embedDepth >= p.t_base - 1e-6;
+    if (!meetsMin) {
+      dom['badge-embed-state'].textContent = '50cm未満注意';
+      dom['badge-embed-state'].className = 'inline-chip chip-danger';
+      dom.embedItem?.classList.add('is-warn');
+    } else if (!coversBase) {
+      dom['badge-embed-state'].textContent = '底版露出注意';
+      dom['badge-embed-state'].className = 'inline-chip chip-warn';
+      dom.embedItem?.classList.add('is-warn');
+    } else {
+      dom['badge-embed-state'].textContent = '≥50cm 適合';
+      dom['badge-embed-state'].className = 'inline-chip chip-ok';
+      dom.embedItem?.classList.remove('is-warn');
+    }
+  }
   dom['val-B_heel'].textContent = `${fmt(bHeel, 2)} m`;
   dom['val-BH_ratio'].textContent = fmt(p.B / p.H, 2);
+
+  if (dom['val-frontSlope']) dom['val-frontSlope'].textContent = `1:${fmt(p.frontSlope, 2)}`;
+  if (dom['val-blockDepth']) dom['val-blockDepth'].textContent = `${fmt(p.blockDepth, 2)} m`;
+  if (dom['val-courseHeight']) dom['val-courseHeight'].textContent = `${fmt(p.courseHeight, 2)} m`;
+  if (dom['val-muJoint']) dom['val-muJoint'].textContent = fmt(p.muJoint, 2);
+  if (dom['val-nCourses'] && state.result?.geom?.nCourses) {
+    dom['val-nCourses'].textContent = `${state.result.geom.nCourses}段`;
+  }
+  if (dom['val-alphaDeg'] && state.result?.coeff?.alphaDeg !== undefined) {
+    dom['val-alphaDeg'].textContent = `${fmt(state.result.coeff.alphaDeg, 1)}°`;
+  }
 
   dom['val-waterRatio'].textContent = `${Math.round(p.waterRatio * 100)}% (${fmt(hw, 2)}m)`;
   dom['val-kh'].textContent = fmt(p.kh, 2);
@@ -453,6 +594,7 @@ function updateMonitorUI(params, result) {
   dom['mobile-status-text'].textContent = normalizeMobileFailureShort(result);
 
   // ① 滑動照査
+  const isBlock = result.wallType === WALL_TYPES.LARGE_BLOCK;
   const sl = checks.sliding;
   dom['card-sliding'].className = `check-card ${sl.ok ? 'is-ok' : 'is-ng'}`;
   dom['badge-sliding'].className = `judge-badge ${sl.ok ? 'is-ok' : 'is-ng'}`;
@@ -465,12 +607,12 @@ function updateMonitorUI(params, result) {
   dom['bar-sliding'].style.width = `${slPct.toFixed(1)}%`;
   dom['mark-sliding'].style.left = '50%';
 
-  const keyBonus = (forces.R_key ?? 0) > 0.05 ? `（突起 +${fmt(forces.R_key, 1)}）` : '';
+  const keyBonus = !isBlock && (forces.R_key ?? 0) > 0.05 ? `（突起 +${fmt(forces.R_key, 1)}）` : '';
   dom['sub-sliding'].textContent = `抵抗 ΣR ${fmt(forces.sumR, 1)} kN${keyBonus} ／ 水平力 ΣH ${fmt(forces.sumH, 1)} kN`;
 
-  // [P-3] 滑動 NG かつ突起 OFF 時の改善ヒント
+  // [P-3] 滑動 NG 時の改善ヒント
   if (dom['hint-sliding']) {
-    if (!sl.ok && !params.hasKey) {
+    if (!sl.ok && !isBlock && !params.hasKey) {
       dom['hint-sliding'].hidden = false;
       dom['hint-sliding'].innerHTML = `
         <svg class="ico-sm" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -479,6 +621,16 @@ function updateMonitorUI(params, result) {
           <circle cx="9" cy="5.7" r="0.8" fill="currentColor" stroke="none" />
         </svg>
         <span>ヒント：「底面突起」ONや底版幅拡大で滑動抵抗を改善</span>
+      `;
+    } else if (!sl.ok && isBlock) {
+      dom['hint-sliding'].hidden = false;
+      dom['hint-sliding'].innerHTML = `
+        <svg class="ico-sm" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="9" cy="9" r="7.5" />
+          <line x1="9" y1="8.2" x2="9" y2="12.5" />
+          <circle cx="9" cy="5.7" r="0.8" fill="currentColor" stroke="none" />
+        </svg>
+        <span>ヒント：基礎底幅B拡大・勾配緩和・胴込めコン充填で改善</span>
       `;
     } else {
       dom['hint-sliding'].hidden = true;
@@ -543,17 +695,88 @@ function updateMonitorUI(params, result) {
     dom['sub-bearing'].textContent = `つま先 q₁ ${fmt(br.q1, 1)} ／ かかと q₂ ${fmt(br.q2, 1)} kN/m²（台形分布・全面接地）`;
   }
 
+  // ④ 目地安定照査（大型積みブロック専用）
+  const jt = checks.joint;
+  if (dom['card-joint']) {
+    const showJoint = Boolean(isBlock && jt && jt.enabled);
+    dom['card-joint'].hidden = !showJoint;
+    if (showJoint) {
+      dom['card-joint'].className = `check-card ${jt.ok ? 'is-ok' : 'is-ng'}`;
+      dom['badge-joint'].className = `judge-badge ${jt.ok ? 'is-ok' : 'is-ng'}`;
+      dom['badge-joint'].textContent = jt.ok ? 'OK' : 'NG';
+      dom['val-fsj'].textContent = jt.fs > 99 ? '>99' : fmt(jt.fs, 2);
+      dom['val-fsj-limit'].textContent = `≥ ${fmt(jt.limit, 2)}`;
+
+      const jtMaxScale = jt.limit * 2.0;
+      const jtPct = clamp((jt.fs / jtMaxScale) * 100, 3, 100);
+      dom['bar-joint'].style.width = `${jtPct.toFixed(1)}%`;
+      dom['mark-joint'].style.left = '50%';
+
+      const totalN = geom.nCourses ?? jt.courses?.length ?? 0;
+      const pinNote = (jt.interlockBonus ?? 0) > 0.1 ? `（連結 +${fmt(jt.interlockBonus, 0)}kN）` : '';
+      const eccStatus = jt.criticalOverturnOk ? '偏心OK' : '偏心NG';
+      dom['sub-joint'].textContent =
+        `最弱: ${jt.criticalCourseNum}段目目地（y=${fmt(jt.criticalY, 2)}m）${pinNote} ／ 全${totalN}段・${eccStatus}`;
+
+      if (dom['hint-joint']) {
+        if (!jt.ok && !params.hasInterlock) {
+          dom['hint-joint'].hidden = false;
+          dom['hint-joint'].innerHTML = `
+            <svg class="ico-sm" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="9" cy="9" r="7.5" />
+              <line x1="9" y1="8.2" x2="9" y2="12.5" />
+              <circle cx="9" cy="5.7" r="0.8" fill="currentColor" stroke="none" />
+            </svg>
+            <span>ヒント：「連結ピン・噛み合わせ」ONや目地摩擦μj向上で改善</span>
+          `;
+        } else if (!jt.ok) {
+          dom['hint-joint'].hidden = false;
+          dom['hint-joint'].innerHTML = `
+            <svg class="ico-sm" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="9" cy="9" r="7.5" />
+              <line x1="9" y1="8.2" x2="9" y2="12.5" />
+              <circle cx="9" cy="5.7" r="0.8" fill="currentColor" stroke="none" />
+            </svg>
+            <span>ヒント：控え長・基礎幅拡大、勾配緩和、または排水改善で回復</span>
+          `;
+        } else {
+          dom['hint-joint'].hidden = true;
+          dom['hint-joint'].textContent = '';
+        }
+      }
+    }
+  }
+
   // タブ2：計算途中式 ＆ 検算シート
   updateFormulasTab(params, result);
 }
 
 function updateFormulasTab(params, result) {
   const { isSeismic, geom, coeff, forces, moments, checks, breakdownRows } = result;
+  const isBlock = result.wallType === WALL_TYPES.LARGE_BLOCK;
 
-  dom['formula-theory-tag'].textContent = isSeismic ? '物部・岡部式（地震時）' : 'クーロン式（常時）';
+  dom['formula-theory-tag'].textContent = isBlock
+    ? isSeismic
+      ? '一般物部・岡部式（傾斜背面）'
+      : '一般クーロン式（傾斜背面）'
+    : isSeismic
+      ? '物部・岡部式（地震時）'
+      : 'クーロン式（常時）';
   dom['kv-ka-label'].innerHTML = isSeismic ? '地震時土圧係数 K<sub>AE</sub>' : '主働土圧係数 K<sub>A</sub>';
   dom['kv-ka-val'].textContent = fmt(coeff.ka, 3);
-  dom['kv-angles-val'].textContent = `${fmt(coeff.deltaDeg, 1)}° ／ ${fmt(coeff.thetaEDeg, 1)}°`;
+  if (dom['kv-angles-label']) {
+    dom['kv-angles-label'].innerHTML = isBlock
+      ? '背面角 α ／ 壁面摩擦 δ'
+      : '壁面摩擦角 δ ／ 合成角 θ<sub>e</sub>';
+  }
+  dom['kv-angles-val'].textContent = isBlock
+    ? `${fmt(coeff.alphaDeg, 1)}° ／ ${fmt(coeff.deltaDeg, 1)}°`
+    : `${fmt(coeff.deltaDeg, 1)}° ／ ${fmt(coeff.thetaEDeg, 1)}°`;
+  if (dom['kv-heights-label']) {
+    dom['kv-heights-label'].innerHTML = isBlock
+      ? '壁高 H ／ 水位 H<sub>w</sub>'
+      : '仮想背面高 H<sub>v</sub> ／ 水位 H<sub>w</sub>';
+  }
   dom['kv-heights-val'].textContent = `${fmt(geom.H_v, 2)} m ／ ${fmt(geom.H_w, 2)} m`;
   dom['kv-forces-val'].textContent = `${fmt(forces.sumV, 1)} ／ ${fmt(forces.sumH, 1)} kN`;
   dom['kv-moments-val'].textContent = `${fmt(moments.Mr, 1)} ／ ${fmt(moments.Mt, 1)} kN·m`;
@@ -563,20 +786,21 @@ function updateFormulasTab(params, result) {
   const sl = checks.sliding;
   const ot = checks.overturning;
   const br = checks.bearing;
-  const hasKeyActive = Boolean(params.hasKey) && (forces.R_key ?? 0) > 0.05;
+  const jt = checks.joint;
+  const hasKeyActive = !isBlock && Boolean(params.hasKey) && (forces.R_key ?? 0) > 0.05;
   const keyTermSym = hasKeyActive ? ' + Rkey' : '';
   const keyTermNum = hasKeyActive ? ` + ${fmt(forces.R_key, 1)}` : '';
 
-  // [P-3] 突起 Rkey 根拠行（result.coeff?.keyDetail 優先・未定義時は安全フォールバック）
+  // [P-3] 突起 Rkey 根拠行（L型専用）
   let keyDetailHtml = '';
-  if (params.hasKey) {
+  if (!isBlock && params.hasKey) {
     const kd = coeff.keyDetail || {};
     const eta = kd.eta ?? 0.50;
     const kpB = kd.kpBase ?? coeff.kpBase ?? 3.0;
     const kaB = kd.kaBase ?? coeff.kaBase ?? (1 / kpB);
     const dk = kd.keyDepth ?? geom.keyDepth ?? 0.55;
     const gammaB = kd.gammaBase ?? (params.gammaSoil + 1.0);
-    const qPrime = kd.qOverburdenKey ?? (0.25 * Math.max(0, forces.sumV / Math.max(0.1, geom.B)));
+    const qPrime = kd.qOverburden ?? kd.qOverburdenKey ?? (0.25 * Math.max(0, forces.sumV / Math.max(0.1, geom.B)));
     keyDetailHtml = `
       <div class="formula-eq-block formula-eq-key">
         <div class="formula-eq-general">突起抵抗: Rkey = η(Kp−Ka)(½γb·dk² + q'·dk)</div>
@@ -586,9 +810,69 @@ function updateFormulasTab(params, result) {
   }
 
   // [P-3] 滑動 NG 時の改善ヒント
-  const slidingHintHtml = (!sl.ok && !params.hasKey)
+  const slidingHintHtml = (!sl.ok && !isBlock && !params.hasKey)
     ? `<div class="formula-hint-box">ヒント：「断面寸法」の『底面突起』ON または底版幅拡大で滑動 OK へ回復できます</div>`
-    : '';
+    : (!sl.ok && isBlock)
+      ? `<div class="formula-hint-box">ヒント：基礎底幅 B 拡大・法勾配緩和・胴込めコン充填で底面滑動を改善できます</div>`
+      : '';
+
+  // 大型ブロック専用：④ 全段ブロック目地照査カード
+  let jointFormulaCardHtml = '';
+  if (isBlock && jt && jt.enabled) {
+    const pinActive = Boolean(params.hasInterlock) && (jt.interlockBonus ?? 0) > 0.1;
+    const pinSym = pinActive ? ' + Rpin' : '';
+    const pinNum = pinActive ? ` + ${fmt(jt.interlockBonus, 1)}` : '';
+    const critC = (jt.courses || []).find((c) => c.courseIndex === jt.criticalCourseIndex) || jt.courses?.[0];
+    const critFs = critC ? critC.fsSlide : jt.fs;
+    const critSlideOk = critC ? critC.slideOk : jt.criticalSlideOk;
+    const critOvtOk = critC ? critC.overturnOk : jt.criticalOverturnOk;
+    const critE = critC ? critC.e : jt.criticalE;
+    const critELim = critC ? critC.eLimit : jt.criticalELimit;
+    const rowsHtml = (jt.courses || [])
+      .map((c) => {
+        const isCrit = c.courseIndex === jt.criticalCourseIndex;
+        const trClass = isCrit ? (c.ok ? 'is-crit-ok' : 'is-crit-ng') : '';
+        return `
+          <tr class="${trClass}">
+            <td>${c.courseNum}段底 (${fmt(c.y, 2)}m)</td>
+            <td>${fmt(c.width, 2)}m</td>
+            <td class="${c.slideOk ? 'eq-ok' : 'eq-ng'}">${c.fsSlide > 99 ? '>99' : fmt(c.fsSlide, 2)}</td>
+            <td class="${c.overturnOk ? 'eq-ok' : 'eq-ng'}">${fmt(Math.abs(c.e), 2)}/${fmt(c.eLimit, 2)}</td>
+            <td class="${c.ok ? 'eq-ok' : 'eq-ng'}">${c.ok ? 'OK' : 'NG'}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    jointFormulaCardHtml = `
+      <div class="formula-card">
+        <div class="formula-card-head">
+          <span class="formula-card-title">④ 全段目地照査（最弱: ${jt.criticalCourseNum}段目底）</span>
+          <span class="judge-badge ${jt.ok ? 'is-ok' : 'is-ng'}">${jt.ok ? 'OK' : 'NG'}</span>
+        </div>
+        <div class="formula-eq-block">
+          <div class="formula-eq-general">目地滑動: Fsj = (ΣVj·μj${pinSym}) / ΣHj（${jt.criticalCourseNum}段目底 y=${fmt(jt.criticalY, 2)}m）</div>
+          <div class="formula-eq-calc">= (${fmt(jt.criticalSumV, 1)}×${fmt(params.muJoint, 2)}${pinNum}) / ${fmt(jt.criticalSumH, 1)} = <span class="${critSlideOk ? 'eq-ok' : 'eq-ng'}">${critFs > 99 ? '>99' : fmt(critFs, 2)} ${critSlideOk ? '≥' : '&lt;'} ${fmt(jt.limit, 2)} (${critSlideOk ? 'OK' : 'NG'})</span></div>
+        </div>
+        <div class="formula-eq-block">
+          <div class="formula-eq-general">目地偏心: |ej| ≤ ${isSeismic ? 'bj/3' : 'bj/6'}（接触幅 bj=${fmt(jt.criticalWidth, 2)}m）</div>
+          <div class="formula-eq-calc">|ej| = <span class="${critOvtOk ? 'eq-ok' : 'eq-ng'}">${fmt(Math.abs(critE), 2)} ${critOvtOk ? '≤' : '&gt;'} ${fmt(critELim, 2)} m (${critOvtOk ? 'OK' : 'NG'})</span></div>
+        </div>
+        <table class="joint-mini-table">
+          <thead>
+            <tr>
+              <th>目地位置</th>
+              <th>幅 b<sub>j</sub></th>
+              <th>F<sub>sj</sub></th>
+              <th>|e|/許容</th>
+              <th>判定</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+  }
 
   // [P-3] 支持力分布公式（台形 / つま先側三角形 / かかと側三角形 e < 0 / 完全転倒）
   let bearingFormulaHtml = '';
@@ -670,6 +954,23 @@ function updateFormulasTab(params, result) {
         <div class="formula-eq-calc">= ${fmt(br.qaAllow, 0)} / ${qMaxDisp} = <span class="${br.ok ? 'eq-ok' : 'eq-ng'}">${fsbDisp} ${br.ok ? '≥' : '&lt;'} 1.00 (${br.ok ? 'OK' : 'NG'})</span></div>
       </div>
     </div>
+    ${jointFormulaCardHtml}
+    ${(() => {
+      const emb = checks.embedment;
+      if (!emb) return '';
+      return `
+        <div class="formula-card">
+          <div class="formula-card-head">
+            <span class="formula-card-title">構造細目：根入れ深さ D<sub>f</sub>（前面受働土圧は安全側無視）</span>
+            <span class="judge-badge ${emb.ok ? 'is-ok' : 'is-ng'}">${emb.ok ? '適合' : '注意'}</span>
+          </div>
+          <div class="formula-eq-block">
+            <div class="formula-eq-general">D<sub>f</sub> = ${fmt(emb.df, 2)} m（地上高 H' = ${fmt(geom.visibleHeight ?? Math.max(0, geom.H - emb.df), 2)} m） ／ 指針最小根入れ ≥ ${fmt(emb.minRequired, 2)} m かつ ≥ t<sub>b</sub> (${fmt(geom.t_base, 2)} m)</div>
+            <div class="formula-eq-calc"><span class="${emb.ok ? 'eq-ok' : 'eq-ng'}">${escapeHtml(emb.statusJa)}</span>（洗掘・将来掘削に備え、前面埋戻し土の受働土圧は安定抵抗に見込まない）</div>
+          </div>
+        </div>
+      `;
+    })()}
   `;
 
   // [M-3] 荷重・モーメント一覧表（M 列を縦 2 段積みでスリム化し、荷重項目列を拡幅）
@@ -872,6 +1173,7 @@ function drawSectionDiagram2D(canvas, params, result) {
   }
 
   const { geom, forces, checks, isSeismic, diagrams } = result;
+  const isBlock = result.wallType === WALL_TYPES.LARGE_BLOCK;
   const H = geom.H;
   const B = geom.B;
   const B_toe = geom.B_toe;
@@ -880,7 +1182,7 @@ function drawSectionDiagram2D(canvas, params, result) {
   const t_base = geom.t_base;
   const H_v = geom.H_v ?? H;
   const H_w = geom.H_w ?? 0;
-  const hasKey = Boolean(params.hasKey);
+  const hasKey = !isBlock && Boolean(params.hasKey);
   const keyDepth = hasKey ? (geom.keyDepth ?? 0.55) : 0;
   const keyWidth = geom.keyWidth ?? 0.45;
   const keyX = geom.keyX ?? (B_toe + t_stem + 0.35 * Math.max(0.3, B - B_toe - t_stem));
@@ -896,32 +1198,48 @@ function drawSectionDiagram2D(canvas, params, result) {
   const drawH = Math.max(80, cssH - padT - padB);
 
   // 等方スケール（擁壁断面が正しい縦横比で収まる）
-  const worldW = B + 0.30;
+  const maxRightWall = isBlock ? Math.max(B, geom.x_back_top ?? B, geom.x_back_bot ?? B) : B;
+  const worldW = maxRightWall + 0.30;
   const worldH = Math.max(H_v, H) + 0.20;
   const scale = Math.min(drawW / worldW, drawH / worldH);
 
   // 原点 O (X=0, Y=0) のスクリーン位置
-  const originX = padL + Math.max(0, (drawW - B * scale) * 0.36);
+  const originX = padL + Math.max(0, (drawW - maxRightWall * scale) * 0.36);
   const originY = cssH - padB;
 
   const toX = (wx) => originX + wx * scale;
   const toY = (wy) => originY - wy * scale;
 
-  // 1. 背面盛土ポリゴン（[M-5] engine.js / scene3d.js と完全一致する xStemBackBot 起点）
-  const xStemBackTop = B_toe + t_top;
-  const xStemBackBot = B_toe + t_stem;
-  const soilRightX = B + Math.min(0.42, 20 / scale);
-  const ySlopeAt = (wx) => H + Math.max(0, wx - xStemBackBot) * Math.tan(betaRad);
+  // 背面・土圧作用面の統一ヘルパー
+  const xStemBackTop = isBlock ? (geom.x_back_top ?? B) : (B_toe + t_top);
+  const xStemBackBot = isBlock ? (geom.x_back_bot ?? B - 0.15) : (B_toe + t_stem);
+  const xBackPlaneAt = (wy) =>
+    isBlock
+      ? Math.max(0.35, xStemBackBot + (geom.slopeBack ?? 0) * (wy - t_base))
+      : B;
+  const soilRightX = maxRightWall + Math.min(0.42, 20 / scale);
+  const xSlopeStart = isBlock ? xStemBackTop : xStemBackBot;
+  const ySlopeAt = (wx) => H + Math.max(0, wx - xSlopeStart) * Math.tan(betaRad);
 
+  // 1. 背面盛土ポリゴン
   ctx.save();
   ctx.beginPath();
-  ctx.moveTo(toX(xStemBackBot), toY(t_base));
-  ctx.lineTo(toX(xStemBackTop), toY(H));
-  ctx.lineTo(toX(xStemBackBot), toY(H));
-  ctx.lineTo(toX(soilRightX), toY(ySlopeAt(soilRightX)));
-  ctx.lineTo(toX(soilRightX), toY(0));
-  ctx.lineTo(toX(B), toY(0));
-  ctx.lineTo(toX(B), toY(t_base));
+  if (isBlock) {
+    ctx.moveTo(toX(xStemBackBot), toY(t_base));
+    ctx.lineTo(toX(xStemBackTop), toY(H));
+    ctx.lineTo(toX(soilRightX), toY(ySlopeAt(soilRightX)));
+    ctx.lineTo(toX(soilRightX), toY(0));
+    ctx.lineTo(toX(B), toY(0));
+    ctx.lineTo(toX(B), toY(t_base));
+  } else {
+    ctx.moveTo(toX(xStemBackBot), toY(t_base));
+    ctx.lineTo(toX(xStemBackTop), toY(H));
+    ctx.lineTo(toX(xStemBackBot), toY(H));
+    ctx.lineTo(toX(soilRightX), toY(ySlopeAt(soilRightX)));
+    ctx.lineTo(toX(soilRightX), toY(0));
+    ctx.lineTo(toX(B), toY(0));
+    ctx.lineTo(toX(B), toY(t_base));
+  }
   ctx.closePath();
   const soilGrad = ctx.createLinearGradient(0, toY(H_v), 0, toY(0));
   soilGrad.addColorStop(0, '#fef3c7');
@@ -934,7 +1252,6 @@ function drawSectionDiagram2D(canvas, params, result) {
   // 2. 地下水面・飽和領域（H_w > 0 のとき、H_w は底面 Y=0 からの標高）
   if (H_w > 0.02) {
     const waterY = H_w;
-    // 水面高さでのたて壁背面 X 座標
     const stemRatio = clamp((waterY - t_base) / Math.max(0.01, H - t_base), 0, 1);
     const xStemAtWater = xStemBackBot + (xStemBackTop - xStemBackBot) * stemRatio;
 
@@ -962,7 +1279,7 @@ function drawSectionDiagram2D(canvas, params, result) {
       ctx.setLineDash([]);
 
       // ▽ 水面シンボル
-      const triX = toX((xStemAtWater + B) * 0.52);
+      const triX = toX((xStemAtWater + soilRightX) * 0.52);
       const triY = toY(waterY);
       ctx.fillStyle = '#0284c7';
       ctx.beginPath();
@@ -978,22 +1295,24 @@ function drawSectionDiagram2D(canvas, params, result) {
     ctx.restore();
   }
 
-  // 地表面実線（xStemBackTop → xStemBackBot 水平、xStemBackBot 以降 β 勾配で X=B の Hv に完全一致）
+  // 地表面実線
   ctx.save();
   ctx.strokeStyle = '#92400e';
   ctx.lineWidth = 1.4;
   ctx.beginPath();
   ctx.moveTo(toX(xStemBackTop), toY(H));
-  ctx.lineTo(toX(xStemBackBot), toY(H));
+  if (!isBlock) {
+    ctx.lineTo(toX(xStemBackBot), toY(H));
+  }
   ctx.lineTo(toX(soilRightX), toY(ySlopeAt(soilRightX)));
   ctx.stroke();
   ctx.restore();
 
-  // 3. 上載荷重矢印群 (q > 0)（[M-5] ラベルを矢印頂点より明確に上へ離して干渉ゼロ）
+  // 3. 上載荷重矢印群 (q > 0)
   if (params.qSurcharge > 0.5) {
-    const qSpanStart = xStemBackBot + 0.08;
-    const qSpanEnd = Math.max(qSpanStart + 0.2, B - 0.04);
-    const arrowCount = 4;
+    const qSpanStart = xSlopeStart + 0.08;
+    const qSpanEnd = Math.max(qSpanStart + 0.25, (isBlock ? soilRightX : B) - 0.04);
+    const arrowCount = isBlock ? 3 : 4;
     const arrowLen = 11;
     let minArrowTopY = Infinity;
     for (let i = 0; i < arrowCount; i++) {
@@ -1004,7 +1323,6 @@ function drawSectionDiagram2D(canvas, params, result) {
       drawArrow(ctx, toX(wx), topY, toX(wx), toY(wy) - 1, '#7c3aed', 1.3, 4.2);
     }
     const qMidX = clamp(toX((qSpanStart + qSpanEnd) * 0.5), padL + 26, cssW - 58);
-    // ピル高さ ~15px の下端が minArrowTopY - 3 より上になるよう厳密配置
     const qLabelY = Math.max(9, minArrowTopY - 11);
     drawPillLabel(ctx, `q=${Math.round(params.qSurcharge)} kN/m²`, qMidX, qLabelY, {
       color: '#6d28d9',
@@ -1016,44 +1334,147 @@ function drawSectionDiagram2D(canvas, params, result) {
     });
   }
 
-  // 4. 基礎地盤ライン（底面）
+  // 4. 基礎地盤ライン（底面）＆ 前面根入れ埋設地盤 GL (Y = Df)
+  const Df = clamp(Number(geom.embedDepth ?? params.embedDepth ?? 0.50), 0.20, Math.max(0.30, H - 0.4));
+  const frontLeftX = -0.45;
+  const xWallFrontAtDf = isBlock
+    ? (geom.x_front_bot ?? 0.16) + (geom.frontSlope ?? 0.35) * Math.max(0, Df - t_base)
+    : B_toe;
+
+  // 前面根入れ土（Df > t_base 時はつま先・基礎天端上も埋設表示）
   ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(toX(frontLeftX), toY(0));
+  ctx.lineTo(toX(0), toY(0));
+  if (Df > t_base + 0.01) {
+    ctx.lineTo(toX(0), toY(t_base));
+    const xFrontBase = isBlock ? (geom.x_front_bot ?? 0.16) : B_toe;
+    ctx.lineTo(toX(xFrontBase), toY(t_base));
+    ctx.lineTo(toX(xWallFrontAtDf), toY(Df));
+  } else {
+    ctx.lineTo(toX(0), toY(Df));
+  }
+  ctx.lineTo(toX(frontLeftX), toY(Df));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(134, 239, 172, 0.24)';
+  ctx.fill();
+
+  // 前面地盤線 GL (Y = Df)
+  const glRightX = Df > t_base + 0.01 ? xWallFrontAtDf : 0;
+  ctx.strokeStyle = Df >= 0.50 - 1e-6 && Df >= t_base - 1e-6 ? '#15803d' : '#d97706';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(toX(frontLeftX), toY(Df));
+  ctx.lineTo(toX(glRightX), toY(Df));
+  ctx.stroke();
+
+  // 基礎底面ライン
   ctx.strokeStyle = '#64748b';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(toX(-0.35), toY(0));
+  ctx.moveTo(toX(frontLeftX), toY(0));
   ctx.lineTo(toX(soilRightX), toY(0));
   ctx.stroke();
   ctx.restore();
 
-  // 5. L型擁壁コンクリート断面ポリゴン
+  // 5. 擁壁断面ポリゴン（L型 RC ／ 大型積みブロック段積み）
   ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(toX(0), toY(0));
-  ctx.lineTo(toX(0), toY(t_base));
-  ctx.lineTo(toX(B_toe), toY(t_base));
-  ctx.lineTo(toX(B_toe), toY(H));
-  ctx.lineTo(toX(xStemBackTop), toY(H));
-  ctx.lineTo(toX(xStemBackBot), toY(t_base));
-  ctx.lineTo(toX(B), toY(t_base));
-  ctx.lineTo(toX(B), toY(0));
-  if (hasKey) {
-    const kR = Math.min(B - 0.05, keyX + keyWidth / 2);
-    const kL = Math.max(0.05, keyX - keyWidth / 2);
-    ctx.lineTo(toX(kR), toY(0));
-    ctx.lineTo(toX(kR), toY(-keyDepth));
-    ctx.lineTo(toX(kL), toY(-keyDepth));
-    ctx.lineTo(toX(kL), toY(0));
+  if (isBlock && Array.isArray(geom.courses)) {
+    // 基礎コンクリート
+    ctx.fillStyle = '#cbd5e1';
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.rect(toX(0), toY(t_base), toX(B) - toX(0), toY(0) - toY(t_base));
+    ctx.fill();
+    ctx.stroke();
+
+    // 各段ブロック断面（前面・背面完全平行の平行四辺形）
+    for (let i = 0; i < geom.courses.length; i++) {
+      const c = geom.courses[i];
+      const xb0 = c.xb0 ?? c.xf0 + (geom.blockDepth ?? 1.2);
+      const xb1 = c.xb1 ?? c.xf1 + (geom.blockDepth ?? 1.2);
+      ctx.beginPath();
+      ctx.moveTo(toX(c.xf0), toY(c.y0));
+      ctx.lineTo(toX(xb0), toY(c.y0));
+      ctx.lineTo(toX(xb1), toY(c.y1));
+      ctx.lineTo(toX(c.xf1), toY(c.y1));
+      ctx.closePath();
+      ctx.fillStyle = i % 2 === 0 ? '#cbd5e1' : '#b8c4d2';
+      ctx.fill();
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1.25;
+      ctx.stroke();
+    }
+
+    // 天端笠コンクリート（前面・背面平行）
+    if (geom.cap) {
+      const cp = geom.cap;
+      const cxb0 = cp.xb0 ?? cp.xf0 + (geom.blockDepth ?? 1.2);
+      const cxb1 = cp.xb1 ?? cp.xf1 + (geom.blockDepth ?? 1.2);
+      ctx.beginPath();
+      ctx.moveTo(toX(cp.xf0), toY(cp.y0));
+      ctx.lineTo(toX(cxb0), toY(cp.y0));
+      ctx.lineTo(toX(cxb1), toY(cp.y1));
+      ctx.lineTo(toX(cp.xf1), toY(cp.y1));
+      ctx.closePath();
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.25;
+      ctx.stroke();
+    }
+
+    // 危険目地の赤ハイライトライン（目地 NG 時）
+    const jt = checks.joint;
+    if (jt?.enabled && !jt.ok && jt.criticalCourseIndex >= 0) {
+      const cCrit = geom.courses[jt.criticalCourseIndex];
+      if (cCrit) {
+        const xbCrit = cCrit.xb0 ?? cCrit.xf0 + (geom.blockDepth ?? 1.2);
+        ctx.save();
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 2.2;
+        ctx.setLineDash([4, 2]);
+        ctx.beginPath();
+        ctx.moveTo(toX(cCrit.xf0) - 4, toY(cCrit.y0));
+        ctx.lineTo(toX(xbCrit) + 4, toY(cCrit.y0));
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.arc(toX(cCrit.xf0), toY(cCrit.y0), 3.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(toX(0), toY(0));
+    ctx.lineTo(toX(0), toY(t_base));
+    ctx.lineTo(toX(B_toe), toY(t_base));
+    ctx.lineTo(toX(B_toe), toY(H));
+    ctx.lineTo(toX(xStemBackTop), toY(H));
+    ctx.lineTo(toX(xStemBackBot), toY(t_base));
+    ctx.lineTo(toX(B), toY(t_base));
+    ctx.lineTo(toX(B), toY(0));
+    if (hasKey) {
+      const kR = Math.min(B - 0.05, keyX + keyWidth / 2);
+      const kL = Math.max(0.05, keyX - keyWidth / 2);
+      ctx.lineTo(toX(kR), toY(0));
+      ctx.lineTo(toX(kR), toY(-keyDepth));
+      ctx.lineTo(toX(kL), toY(-keyDepth));
+      ctx.lineTo(toX(kL), toY(0));
+    }
+    ctx.closePath();
+    const concGrad = ctx.createLinearGradient(toX(0), toY(H), toX(B), toY(0));
+    concGrad.addColorStop(0, '#cbd5e1');
+    concGrad.addColorStop(1, '#94a3b8');
+    ctx.fillStyle = concGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
   }
-  ctx.closePath();
-  const concGrad = ctx.createLinearGradient(toX(0), toY(H), toX(B), toY(0));
-  concGrad.addColorStop(0, '#cbd5e1');
-  concGrad.addColorStop(1, '#94a3b8');
-  ctx.fillStyle = concGrad;
-  ctx.fill();
-  ctx.strokeStyle = '#1e293b';
-  ctx.lineWidth = 1.6;
-  ctx.stroke();
 
   // 原点 O（つま先先端）マーカー
   ctx.fillStyle = '#0f172a';
@@ -1062,26 +1483,63 @@ function drawSectionDiagram2D(canvas, params, result) {
   ctx.fill();
   ctx.restore();
 
-  // 6. 仮想背面破線 (X = B)
-  const vBackX = toX(B);
+  // 6. 仮想背面／土圧作用面 破線
+  const vBackBotX = toX(xBackPlaneAt(0));
+  const vBackTopX = toX(xBackPlaneAt(H_v));
   const vBackTopY = toY(H_v);
   ctx.save();
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 1.25;
   ctx.setLineDash([4, 3]);
   ctx.beginPath();
-  ctx.moveTo(vBackX, toY(0));
-  ctx.lineTo(vBackX, vBackTopY);
+  ctx.moveTo(vBackBotX, toY(0));
+  ctx.lineTo(vBackTopX, vBackTopY);
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
 
-  // 7. 仮想背面右側の水平圧力分布（土圧・水圧・上載圧）
+  // 6b. 破壊NG時：主働すべり面（赤一点鎖線）＆ 背面道路クラック位置表示
+  const fz = result.failureZone;
+  if (!result.overall?.ok && fz && Number.isFinite(fz.originX) && Number.isFinite(fz.crackX)) {
+    const xS0 = toX(fz.originX);
+    const yS0 = toY(fz.originY);
+    const xS1Raw = toX(fz.crackX);
+    const yS1Raw = toY(fz.crackY);
+    // 右端ラベル領域に侵入しないよう安全クリップ
+    const maxSlipScreenX = cssW - 6;
+    let xS1 = xS1Raw;
+    let yS1 = yS1Raw;
+    if (xS1 > maxSlipScreenX && xS1Raw > xS0 + 1) {
+      const t = (maxSlipScreenX - xS0) / (xS1Raw - xS0);
+      xS1 = maxSlipScreenX;
+      yS1 = yS0 + (yS1Raw - yS0) * t;
+    }
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(220, 38, 38, 0.85)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 2.5, 1.5, 2.5]);
+    ctx.beginPath();
+    ctx.moveTo(xS0, yS0);
+    ctx.lineTo(xS1, yS1);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 路面クラック出口マーカー
+    if (xS1Raw <= maxSlipScreenX) {
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.arc(xS1, yS1, 3.0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // 7. 背面右側の水平圧力分布（土圧・水圧・上載圧）
   let earthPts = normalizeDiagramPts(diagrams?.earthPressurePts, 'y', 'p');
   let waterPts = normalizeDiagramPts(diagrams?.waterPressurePts, 'y', 'p');
   let surPts = normalizeDiagramPts(diagrams?.surchargePts, 'y', 'p');
 
-  // フォールバック生成（万一 diagrams が空の場合も正確に描画）
   if (earthPts.length < 2) {
     const pBot = (2 * (forces.Pa_h ?? 0)) / Math.max(0.1, H_v);
     earthPts = [{ a: 0, b: pBot }, { a: H_v, b: 0 }];
@@ -1094,12 +1552,12 @@ function drawSectionDiagram2D(canvas, params, result) {
     surPts = [{ a: 0, b: pq }, { a: H_v, b: pq }];
   }
 
-  // 最大圧力を計算して右側描画幅 (最大 64px) にスケーリング
   const maxEarthP = earthPts.reduce((m, pt) => Math.max(m, pt.b), 0);
   const maxWaterP = waterPts.reduce((m, pt) => Math.max(m, pt.b), 0);
   const maxSurP = surPts.reduce((m, pt) => Math.max(m, pt.b), 0);
   const maxHorizP = Math.max(10, maxEarthP + maxSurP, maxWaterP);
-  const maxPressurePx = clamp(cssW - vBackX - 76, 28, 56);
+  const maxPlaneX = Math.max(vBackBotX, vBackTopX);
+  const maxPressurePx = clamp(cssW - maxPlaneX - 76, 26, 56);
   const pScale = maxPressurePx / maxHorizP;
 
   // 7a. 上載圧 (薄紫)
@@ -1107,11 +1565,11 @@ function drawSectionDiagram2D(canvas, params, result) {
     const sorted = [...surPts].sort((p1, p2) => p1.a - p2.a);
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(vBackX, toY(sorted[0].a));
+    ctx.moveTo(toX(xBackPlaneAt(sorted[0].a)), toY(sorted[0].a));
     for (const pt of sorted) {
-      ctx.lineTo(vBackX + pt.b * pScale, toY(pt.a));
+      ctx.lineTo(toX(xBackPlaneAt(pt.a)) + pt.b * pScale, toY(pt.a));
     }
-    ctx.lineTo(vBackX, toY(sorted[sorted.length - 1].a));
+    ctx.lineTo(toX(xBackPlaneAt(sorted[sorted.length - 1].a)), toY(sorted[sorted.length - 1].a));
     ctx.closePath();
     ctx.fillStyle = 'rgba(124, 58, 237, 0.16)';
     ctx.fill();
@@ -1127,11 +1585,11 @@ function drawSectionDiagram2D(canvas, params, result) {
     const sorted = [...earthPts].sort((p1, p2) => p1.a - p2.a);
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(vBackX, toY(sorted[0].a));
+    ctx.moveTo(toX(xBackPlaneAt(sorted[0].a)), toY(sorted[0].a));
     for (const pt of sorted) {
-      ctx.lineTo(vBackX + pt.b * pScale, toY(pt.a));
+      ctx.lineTo(toX(xBackPlaneAt(pt.a)) + pt.b * pScale, toY(pt.a));
     }
-    ctx.lineTo(vBackX, toY(sorted[sorted.length - 1].a));
+    ctx.lineTo(toX(xBackPlaneAt(sorted[sorted.length - 1].a)), toY(sorted[sorted.length - 1].a));
     ctx.closePath();
     ctx.fillStyle = 'rgba(234, 88, 12, 0.24)';
     ctx.fill();
@@ -1140,9 +1598,10 @@ function drawSectionDiagram2D(canvas, params, result) {
     ctx.stroke();
     ctx.restore();
 
-    // 土圧合力矢印
-    const paArrowY = toY(H_v * 0.38);
-    drawArrow(ctx, vBackX + Math.min(maxPressurePx, 36) + 6, paArrowY, vBackX + 2, paArrowY, '#c2410c', 1.8, 5.5);
+    const paArrowYWorld = H_v * 0.38;
+    const paBaseX = toX(xBackPlaneAt(paArrowYWorld));
+    const paArrowY = toY(paArrowYWorld);
+    drawArrow(ctx, paBaseX + Math.min(maxPressurePx, 36) + 6, paArrowY, paBaseX + 2, paArrowY, '#c2410c', 1.8, 5.5);
   }
 
   // 7c. 静水圧 (青)
@@ -1150,11 +1609,11 @@ function drawSectionDiagram2D(canvas, params, result) {
     const sorted = [...waterPts].sort((p1, p2) => p1.a - p2.a);
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(vBackX, toY(sorted[0].a));
+    ctx.moveTo(toX(xBackPlaneAt(sorted[0].a)), toY(sorted[0].a));
     for (const pt of sorted) {
-      ctx.lineTo(vBackX + pt.b * pScale, toY(pt.a));
+      ctx.lineTo(toX(xBackPlaneAt(pt.a)) + pt.b * pScale, toY(pt.a));
     }
-    ctx.lineTo(vBackX, toY(sorted[sorted.length - 1].a));
+    ctx.lineTo(toX(xBackPlaneAt(sorted[sorted.length - 1].a)), toY(sorted[sorted.length - 1].a));
     ctx.closePath();
     ctx.fillStyle = 'rgba(2, 132, 199, 0.28)';
     ctx.fill();
@@ -1163,8 +1622,10 @@ function drawSectionDiagram2D(canvas, params, result) {
     ctx.stroke();
     ctx.restore();
 
-    const pwArrowY = toY(H_w * 0.33);
-    drawArrow(ctx, vBackX + Math.min(maxPressurePx, 34) + 4, pwArrowY, vBackX + 2, pwArrowY, '#0369a1', 1.8, 5.5);
+    const pwArrowYWorld = H_w * 0.33;
+    const pwBaseX = toX(xBackPlaneAt(pwArrowYWorld));
+    const pwArrowY = toY(pwArrowYWorld);
+    drawArrow(ctx, pwBaseX + Math.min(maxPressurePx, 34) + 4, pwArrowY, pwBaseX + 2, pwArrowY, '#0369a1', 1.8, 5.5);
   }
 
   // 7d. 水平力数値ラベル（[M-4] 3D ピンラベルと表記・単位 /m を完全統一）
@@ -1396,6 +1857,20 @@ function drawSectionDiagram2D(canvas, params, result) {
     bg: 'rgba(248, 250, 252, 0.95)',
     border: '#cbd5e1',
     font: '700 9.5px "Noto Sans JP", "BIZ UDPGothic", sans-serif',
+  });
+
+  // 根入れ深さ Df ラベル（前面GL直上左寄せ、H=..m と衝突しないよう上端制限）
+  const hMidY = (toY(H) + toY(0)) * 0.5;
+  const dfLabelY = Math.max(hMidY + 18, toY(Df) - 8);
+  const dfOk = Df >= 0.50 - 1e-6 && Df >= t_base - 1e-6;
+  drawPillLabel(ctx, `Df=${fmt(Df, 2)}`, 4, Math.min(toY(0) - 6, dfLabelY), {
+    align: 'left',
+    color: dfOk ? '#15803d' : '#b45309',
+    bg: dfOk ? 'rgba(240, 253, 244, 0.95)' : 'rgba(255, 251, 235, 0.95)',
+    border: dfOk ? '#bbf7d0' : '#fde68a',
+    font: '700 8.5px "Noto Sans JP", "BIZ UDPGothic", sans-serif',
+    padX: 3,
+    padY: 1,
   });
 
   const dimBY = cssH - 12;
@@ -1678,21 +2153,60 @@ function recomputeAndSync() {
   return result;
 }
 
+function setWallType(nextType, { preserveCommon = true } = {}) {
+  const targetType =
+    nextType === WALL_TYPES.LARGE_BLOCK ? WALL_TYPES.LARGE_BLOCK : WALL_TYPES.L_WALL;
+  if (state.params.wallType === targetType && renderedPresetWallType === targetType) {
+    return state.result;
+  }
+
+  const baseDefaults =
+    targetType === WALL_TYPES.LARGE_BLOCK ? LARGE_BLOCK_DEFAULTS : DEFAULT_PARAMS;
+
+  const nextParams = { ...baseDefaults, wallType: targetType };
+  if (preserveCommon) {
+    // 同じ高さ・水・地震・地盤条件を引き継いで L型 ⇔ 大型ブロック を直接比較可能にする
+    const commonKeys = [
+      'H', 'embedDepth', 'betaDeg', 'qSurcharge', 'waterRatio', 'phiDeg', 'gammaSoil', 'muBase', 'qa', 'kh',
+    ];
+    for (const k of commonKeys) {
+      if (k in state.params) nextParams[k] = state.params[k];
+    }
+  }
+
+  state.params = sanitizeParams(nextParams);
+
+  // 標準設計条件と一致する場合は標準シナリオをハイライト、異なればカスタム扱い
+  const stdId = targetType === WALL_TYPES.LARGE_BLOCK ? 'block_standard' : 'standard';
+  const stdPreset = getPresetsForWallType(targetType).find((p) => p.id === stdId);
+  const matchesStd =
+    stdPreset &&
+    ['H', 'embedDepth', 'betaDeg', 'qSurcharge', 'waterRatio', 'phiDeg', 'gammaSoil', 'muBase', 'qa', 'kh'].every(
+      (k) => Math.abs((state.params[k] ?? 0) - (stdPreset.params[k] ?? 0)) < 1e-6
+    );
+  state.activePresetId = matchesStd ? stdId : null;
+
+  return recomputeAndSync();
+}
+
 function applyPreset(presetId) {
-  const preset = Array.isArray(PRESETS)
-    ? PRESETS.find((p) => p.id === presetId)
-    : null;
+  const allPresets = [...PRESETS, ...BLOCK_PRESETS];
+  const preset = allPresets.find((p) => p.id === presetId) || null;
   if (!preset) return null;
 
   state.activePresetId = preset.id;
   state.params = sanitizeParams(extractPresetParams(preset));
 
   // [M-11] シナリオの注目パラメータがすぐ分かるように左タブを適切に切替・復帰
-  if (preset.id === 'waterlog' || preset.id === 'seismic') {
+  if (
+    preset.id === 'waterlog' ||
+    preset.id === 'seismic' ||
+    preset.id === 'block_waterlog'
+  ) {
     setControlTab('load');
-  } else if (preset.id === 'softsoil') {
+  } else if (preset.id === 'softsoil' || preset.id === 'block_softsoil') {
     setControlTab('soil');
-  } else if (preset.id === 'standard' || preset.id === 'narrow') {
+  } else {
     setControlTab('geom');
   }
 
@@ -1776,18 +2290,26 @@ function bindEvents() {
     setPanels({ right: !state.panels.right });
   });
 
-  // パラメータ初期化（[M-11] 左パネルタブも必ず断面寸法へ復帰）
+  // パラメータ初期化（[M-11] 現在の擁壁タイプの標準設計へ初期化＆左パネルタブを断面寸法へ復帰）
   dom['btn-reset'].addEventListener('click', () => {
-    const hasStandard = Array.isArray(PRESETS) && PRESETS.some((p) => p.id === 'standard');
-    if (hasStandard) {
-      applyPreset('standard');
-    } else {
-      state.activePresetId = null;
-      state.params = sanitizeParams({ ...DEFAULT_PARAMS });
-      setControlTab('geom');
-      recomputeAndSync();
+    const stdId = state.params.wallType === WALL_TYPES.LARGE_BLOCK ? 'block_standard' : 'standard';
+    if (applyPreset(stdId)) {
+      return;
     }
+    state.activePresetId = null;
+    state.params = sanitizeParams(
+      state.params.wallType === WALL_TYPES.LARGE_BLOCK ? { ...LARGE_BLOCK_DEFAULTS } : { ...DEFAULT_PARAMS }
+    );
+    setControlTab('geom');
+    recomputeAndSync();
   });
+
+  // 擁壁タイプ（構造形式）切替
+  for (const btn of dom.wallTypeBtns || []) {
+    btn.addEventListener('click', () => {
+      setWallType(btn.dataset.wallType);
+    });
+  }
 
   // PNG 保存
   dom['btn-export-png'].addEventListener('click', exportCanvasPng);
@@ -1898,6 +2420,10 @@ window.__wallApi = {
 
   setPreset(id) {
     return applyPreset(id);
+  },
+
+  setWallType(wallType, opts) {
+    return setWallType(wallType, opts);
   },
 
   setParams(partial) {

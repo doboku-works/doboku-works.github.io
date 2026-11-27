@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>RETAINING WALL LAB｜L型擁壁 リアルタイム3D安定計算シミュレーター</title>
-  <meta name="description" content="L型擁壁の滑動・転倒・支持力を0msリアルタイム計算＆3D可視化する学習用土木工学シミュレーター" />
+  <title>RETAINING WALL LAB｜L型・大型ブロック擁壁 リアルタイム3D安定計算シミュレーター</title>
+  <meta name="description" content="L型RC擁壁と大型積みブロック擁壁の滑動・転倒・支持力・目地安定を0msリアルタイム計算＆3D可視化する学習用土木工学シミュレーター" />
   <link rel="icon" type="image/png" href="../../../assets/brand/favicon.png?v=20261124-2" />
   <script type="importmap">
   {
@@ -50,7 +50,7 @@
           </span>
           <div class="brand-text">
             <span class="brand-title"><span class="brand-title-full">RETAINING WALL LAB</span><span class="brand-title-short">WALL LAB</span></span>
-            <span class="brand-sub">道路土工・擁壁工指針 参考｜L型擁壁 リアルタイム3D安定計算（学習用簡易モデル）</span>
+            <span id="brand-sub" class="brand-sub">道路土工・擁壁工指針 参考｜L型RC・大型ブロック擁壁 リアルタイム3D安定計算（学習用簡易モデル）</span>
           </div>
         </div>
       </div>
@@ -128,6 +128,25 @@
     </div>
 
     <div class="panel-body">
+      <!-- 0. 擁壁タイプ（構造形式切替） -->
+      <section class="deck-section" aria-labelledby="sec-walltype-title">
+        <div class="section-head">
+          <span class="section-ico section-ico-indigo" aria-hidden="true">
+            <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2.5" y="11.5" width="13" height="4" rx="0.8" />
+              <rect x="3.5" y="7" width="11" height="4.5" rx="0.8" />
+              <rect x="5" y="2.5" width="9.5" height="4.5" rx="0.8" />
+            </svg>
+          </span>
+          <h3 id="sec-walltype-title" class="section-title">擁壁タイプ（構造形式比較）</h3>
+        </div>
+        <div class="seg-tabs seg-tabs-2" role="tablist" aria-label="擁壁構造形式">
+          <button id="walltype-l_wall" class="seg-tab is-active" type="button" role="tab" aria-selected="true" data-wall-type="l_wall">L型 / 逆T型 RC</button>
+          <button id="walltype-large_block" class="seg-tab" type="button" role="tab" aria-selected="false" data-wall-type="large_block">大型ブロック積み</button>
+        </div>
+        <div id="wall-type-hint" class="wall-type-hint">片持ちRC壁＋かかと上土塊重量で土圧に抵抗（仮想背面照査）</div>
+      </section>
+
       <!-- ① 学習シナリオ 5 プリセット -->
       <section class="deck-section" aria-labelledby="sec-presets-title">
         <div class="section-head">
@@ -176,13 +195,14 @@
 
             <div class="slider-item">
               <div class="slider-meta">
-                <label class="slider-label" for="param-B">底版全幅 <span class="sym">B</span></label>
+                <label class="slider-label" for="param-B"><span id="label-B">底版全幅</span> <span class="sym">B</span></label>
                 <span id="val-B" class="slider-value">2.80 m</span>
               </div>
               <input id="param-B" class="range-input" type="range" min="1.4" max="5.5" step="0.05" value="2.8" data-param="B" />
             </div>
 
-            <div class="slider-item">
+            <!-- L型固有スライダー -->
+            <div class="slider-item" data-wall-only="l_wall">
               <div class="slider-meta">
                 <label class="slider-label" for="param-B_toe">つま先版長 <span class="sym">B<sub>toe</sub></span></label>
                 <span id="val-B_toe" class="slider-value">0.45 m</span>
@@ -190,7 +210,7 @@
               <input id="param-B_toe" class="range-input" type="range" min="0.0" max="1.6" step="0.05" value="0.45" data-param="B_toe" />
             </div>
 
-            <div class="slider-item">
+            <div class="slider-item" data-wall-only="l_wall">
               <div class="slider-meta">
                 <label class="slider-label" for="param-t_stem">たて壁基部厚 <span class="sym">t<sub>s</sub></span></label>
                 <span id="val-t_stem" class="slider-value">0.42 m</span>
@@ -198,27 +218,104 @@
               <input id="param-t_stem" class="range-input" type="range" min="0.30" max="0.85" step="0.01" value="0.42" data-param="t_stem" />
             </div>
 
+            <!-- 大型ブロック固有スライダー（前面・背面完全平行断面） -->
+            <div class="slider-item" data-wall-only="large_block" hidden>
+              <div class="slider-meta">
+                <label class="slider-label" for="param-frontSlope">法勾配（前面・背面平行） <span class="sym">1:m</span></label>
+                <span id="val-frontSlope" class="slider-value">1:0.35</span>
+              </div>
+              <input id="param-frontSlope" class="range-input" type="range" min="0.20" max="0.55" step="0.05" value="0.35" data-param="frontSlope" />
+            </div>
+
+            <div class="slider-item" data-wall-only="large_block" hidden>
+              <div class="slider-meta">
+                <label class="slider-label" for="param-blockDepth">ブロック控長（全段一定） <span class="sym">D<sub>b</sub></span></label>
+                <span id="val-blockDepth" class="slider-value">1.20 m</span>
+              </div>
+              <input id="param-blockDepth" class="range-input" type="range" min="0.65" max="2.00" step="0.05" value="1.20" data-param="blockDepth" />
+            </div>
+
+            <div class="slider-item" data-wall-only="large_block" hidden>
+              <div class="slider-meta">
+                <label class="slider-label" for="param-courseHeight">1段の目安高さ <span class="sym">h<sub>c</sub></span></label>
+                <span id="val-courseHeight" class="slider-value">0.50 m</span>
+              </div>
+              <input id="param-courseHeight" class="range-input" type="range" min="0.50" max="1.00" step="0.25" value="0.50" data-param="courseHeight" />
+            </div>
+
+            <div class="slider-item" data-wall-only="large_block" hidden>
+              <div class="slider-meta">
+                <label class="slider-label" for="param-muJoint">ブロック目地摩擦 <span class="sym">μ<sub>j</sub></span></label>
+                <span id="val-muJoint" class="slider-value">0.60</span>
+              </div>
+              <input id="param-muJoint" class="range-input" type="range" min="0.40" max="0.75" step="0.01" value="0.60" data-param="muJoint" />
+            </div>
+
             <div class="slider-item">
               <div class="slider-meta">
-                <label class="slider-label" for="param-t_base">底版厚 <span class="sym">t<sub>b</sub></span></label>
+                <label class="slider-label" for="param-t_base"><span id="label-t_base">底版厚</span> <span class="sym">t<sub>b</sub></span></label>
                 <span id="val-t_base" class="slider-value">0.45 m</span>
               </div>
               <input id="param-t_base" class="range-input" type="range" min="0.30" max="0.85" step="0.01" value="0.45" data-param="t_base" />
             </div>
+
+            <div class="slider-item slider-item-embed">
+              <div class="slider-meta">
+                <label class="slider-label" for="param-embedDepth">
+                  根入れ深さ <span class="sym">D<sub>f</sub></span>
+                  <span id="badge-embed-state" class="inline-chip chip-ok">≥50cm 適合</span>
+                </label>
+                <span id="val-embedDepth" class="slider-value">0.50 m</span>
+              </div>
+              <input id="param-embedDepth" class="range-input" type="range" min="0.30" max="1.20" step="0.05" value="0.50" data-param="embedDepth" />
+              <div class="slider-hint">道路土工指針の最小根入れ 0.50m 以上・前面受働土圧は安全側無視</div>
+            </div>
           </div>
 
-          <div class="derived-strip">
+          <div class="derived-strip" data-wall-only="l_wall">
             <span class="derived-chip">かかと版長 <strong id="val-B_heel" class="num">1.93 m</strong></span>
             <span class="derived-chip">B / H 比 <strong id="val-BH_ratio" class="num">0.70</strong></span>
           </div>
 
-          <label class="switch-card" for="param-hasKey">
+          <div class="derived-strip" data-wall-only="large_block" hidden>
+            <span class="derived-chip">積段数 <strong id="val-nCourses" class="num">7段</strong></span>
+            <span class="derived-chip">平行背面角 α <strong id="val-alphaDeg" class="num">109.3°</strong></span>
+          </div>
+
+          <div class="derived-strip">
+            <span class="derived-chip">地上高 H' <strong id="val-visibleH" class="num">3.50 m</strong></span>
+            <span class="derived-chip derived-chip-note">前面受働土圧 <strong class="num">安全側無視</strong></span>
+          </div>
+
+          <label class="switch-card" for="param-hasKey" data-wall-only="l_wall">
             <div class="switch-card-text">
               <span class="switch-card-title">底面突起（せん断キー）</span>
               <span class="switch-card-desc">底版下に突起を設け滑動抵抗を増強</span>
             </div>
             <span class="switch-control">
               <input id="param-hasKey" type="checkbox" data-param="hasKey" />
+              <span class="switch-track"></span>
+            </span>
+          </label>
+
+          <label class="switch-card" for="param-hasInterlock" data-wall-only="large_block" hidden>
+            <div class="switch-card-text">
+              <span class="switch-card-title">連結ピン・噛み合わせ</span>
+              <span class="switch-card-desc">段目地に有効せん断抵抗（+18 kN/m）を付加</span>
+            </div>
+            <span class="switch-control">
+              <input id="param-hasInterlock" type="checkbox" checked data-param="hasInterlock" />
+              <span class="switch-track"></span>
+            </span>
+          </label>
+
+          <label class="switch-card" for="param-fillConcrete" data-wall-only="large_block" hidden>
+            <div class="switch-card-text">
+              <span class="switch-card-title">胴込めコンクリート充填</span>
+              <span class="switch-card-desc">OFF: 中詰め砕石 21.0 ／ ON: コン充填 23.0 kN/m³</span>
+            </div>
+            <span class="switch-control">
+              <input id="param-fillConcrete" type="checkbox" data-param="fillConcrete" />
               <span class="switch-track"></span>
             </span>
           </label>
@@ -333,7 +430,7 @@
             <input id="opt-showRebar" type="checkbox" data-opt="showRebar" />
             <span class="toggle-pill-ui">
               <span class="toggle-dot dot-blue"></span>
-              <span class="toggle-label">主鉄筋透視</span>
+              <span id="label-showRebar" class="toggle-label">主鉄筋透視</span>
             </span>
           </label>
 
@@ -505,6 +602,32 @@
             </div>
             <div id="sub-bearing" class="check-sub-row">つま先 q₁ 128.4 ／ かかと q₂ 36.2 kN/m²（全面接地）</div>
           </article>
+
+          <!-- ④ 目地安定照査（大型積みブロック専用） -->
+          <article id="card-joint" class="check-card is-ok" hidden>
+            <div class="check-card-top">
+              <div class="check-card-title">
+                <span class="check-num">4</span>
+                <span>目地安定（段間ズレ・偏心）</span>
+              </div>
+              <span id="badge-joint" class="judge-badge is-ok">OK</span>
+            </div>
+            <div class="check-metric-row">
+              <div class="check-main-val">
+                <span class="metric-sym">min F<sub>sj</sub></span>
+                <strong id="val-fsj" class="metric-num">2.26</strong>
+              </div>
+              <div class="check-limit">基準 <span id="val-fsj-limit" class="num">≥ 1.50</span></div>
+            </div>
+            <div class="gauge-wrap">
+              <div class="gauge-track">
+                <div id="bar-joint" class="gauge-fill" style="width: 75%"></div>
+                <div id="mark-joint" class="gauge-mark" style="left: 50%"></div>
+              </div>
+            </div>
+            <div id="sub-joint" class="check-sub-row">最弱: 1段目目地（y=0.40m）／ 偏心比 0.12（全7段 OK）</div>
+            <div id="hint-joint" class="check-hint-row" hidden></div>
+          </article>
         </div>
 
         <!-- 2x 高DPI 2D 断面力学図 Canvas -->
@@ -530,7 +653,7 @@
             <line x1="9" y1="8.2" x2="9" y2="12.5" />
             <circle cx="9" cy="5.7" r="0.8" fill="currentColor" stroke="none" />
           </svg>
-          <p>道路土工・擁壁工指針の考え方を参考にした、メカニズム理解・学習用の簡易計算シミュレーターです（実務設計では現地地盤調査および各種基準・構造細目に基づく詳細照査を行ってください）。</p>
+          <p>道路土工・擁壁工指針等の考え方を参考にした、メカニズム理解・形式比較用の簡易計算シミュレーターです（実務設計では現地地盤調査・製品ごとの認定仕様および各種基準・構造細目に基づく詳細照査を行ってください）。</p>
         </div>
       </div>
 
@@ -548,11 +671,11 @@
               <strong id="kv-ka-val" class="kv-v">0.333</strong>
             </div>
             <div class="kv-cell">
-              <span class="kv-k">壁面摩擦角 δ ／ 合成角 θ<sub>e</sub></span>
+              <span id="kv-angles-label" class="kv-k">壁面摩擦角 δ ／ 合成角 θ<sub>e</sub></span>
               <strong id="kv-angles-val" class="kv-v">0.0° ／ 0.0°</strong>
             </div>
             <div class="kv-cell">
-              <span class="kv-k">仮想背面高 H<sub>v</sub> ／ 水位 H<sub>w</sub></span>
+              <span id="kv-heights-label" class="kv-k">仮想背面高 H<sub>v</sub> ／ 水位 H<sub>w</sub></span>
               <strong id="kv-heights-val" class="kv-v">4.00 m ／ 0.00 m</strong>
             </div>
             <div class="kv-cell">
